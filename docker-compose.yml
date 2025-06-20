@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  rusty-tts:
+    build: .
+    container_name: rusty-tts-app
+    ports:
+      - "8887:8887"
+    environment:
+      # CORS configuration - customize as needed
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080,https://tts.example.com
+      # Optional: Set custom audio directory
+      # - AUDIO_DIR=audio_files
+    volumes:
+      # Persist audio files between container restarts
+      - audio_files:/app/audio_files
+      # Optional: Mount local development code (uncomment for development)
+      # - .:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8887/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Optional: Add a reverse proxy (uncomment if needed)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: rusty-tts-proxy
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - rusty-tts
+  #   restart: unless-stopped
+
+volumes:
+  audio_files:
+    driver: local
+
+networks:
+  default:
+    name: rusty-tts-network
