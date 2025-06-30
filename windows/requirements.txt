@@ -1,0 +1,9 @@
+# Python 2.7 Requirements for Windows TTS Service
+# These are the last versions that supported Python 2.7
+
+Flask==0.12.5
+Werkzeug==0.16.1
+Jinja2==2.10.3
+MarkupSafe==1.1.1
+itsdangerous==0.24
+click==7.1.2

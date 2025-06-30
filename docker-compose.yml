@@ -1,8 +1,9 @@
-version: '3.8'
-
 services:
   rusty-tts:
-    build: .
+    build: 
+      context: .
+      # Optional: specify target if you want to build only to builder stage for debugging
+      # target: builder
     container_name: rusty-tts-app
     ports:
       - "8887:8887"
@@ -22,15 +23,16 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-    # Resource limits (adjust as needed)
+      # Increased start_period since multi-stage builds might take slightly longer on first run
+      start_period: 45s
+    # Resource limits - you might be able to reduce these now with smaller runtime image
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 1.5G  # Reduced from 2G since no build tools in runtime
           cpus: '1.0'
         reservations:
-          memory: 512M
+          memory: 384M  # Reduced from 512M
           cpus: '0.5'
 
   # Optional: Add a reverse proxy (uncomment if needed)
