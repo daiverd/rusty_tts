@@ -174,6 +174,7 @@ from .dectalk import DECtalkEngine
 from .lpc import LPCEngine
 from .sam import SAMEngine
 from .coqui import CoquiTTSEngine
+from .windows import WindowsEngine
 
 __all__ = [
     'TTSProvider',
@@ -186,4 +187,5 @@ __all__ = [
     'LPCEngine',
     'SAMEngine',
     'CoquiTTSEngine',
+    'WindowsEngine',
 ]

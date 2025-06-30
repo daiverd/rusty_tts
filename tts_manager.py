@@ -3,7 +3,7 @@ from pathlib import Path
 from providers import (
     TTSProvider, BaseTTSEngine,
     PollinationsEngine, EspeakEngine, FestivalEngine, FliteEngine,
-    DECtalkEngine, LPCEngine, SAMEngine, CoquiTTSEngine
+    DECtalkEngine, LPCEngine, SAMEngine, CoquiTTSEngine, WindowsEngine
 )
 
 
@@ -26,6 +26,7 @@ class TTSManager:
             "lpc": LPCEngine(),
             "sam": SAMEngine(),
             "coqui": CoquiTTSEngine(),
+            "windows": WindowsEngine(),
         }
         
         for name, engine in engines.items():
