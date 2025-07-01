@@ -114,16 +114,9 @@ pip install -r requirements.txt
 
 ## Configuration
 
-### Environment Variables
-- `CORS_ORIGINS`: Comma-separated allowed origins
-- `AUDIO_DIR`: Directory for audio file storage (default: audio_files)
-- `WINDOWS_TTS_URL`: Windows service URL (default: http://localhost:5000)
-- `WINDOWS_TTS_ENABLED`: Enable Windows provider integration (default: false)
-- `WINDOWS_TTS_TIMEOUT`: Request timeout for Windows service (default: 30)
-
 ### Key Files
-- `config.py`: Main service configuration
-- `windows/config.py`: Windows service configuration
+- `config.py`: Main service configuration with hardcoded values
+- `windows/config.py`: Windows service configuration  
 - `docker-compose.yml`: Container orchestration
 - `Dockerfile`: Multi-stage build with TTS engine compilation
 

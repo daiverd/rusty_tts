@@ -15,13 +15,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from providers.windows import WindowsEngine
 from tts_manager import TTSManager
+from config import WINDOWS_TTS_URL, WINDOWS_TTS_TIMEOUT, WINDOWS_TTS_ENABLED
 
 def test_windows_service_health():
     """Test if Windows service is responding"""
     print("Testing Windows service health...")
     
     try:
-        response = requests.get("http://localhost:5000/health", timeout=5)
+        response = requests.get(f"{WINDOWS_TTS_URL}/health", timeout=WINDOWS_TTS_TIMEOUT)
         if response.status_code == 200:
             data = response.json()
             print(f"✓ Windows service is healthy: {data}")
@@ -38,7 +39,7 @@ def test_windows_service_providers():
     print("\nTesting Windows service providers...")
     
     try:
-        response = requests.get("http://localhost:5000/providers", timeout=10)
+        response = requests.get(f"{WINDOWS_TTS_URL}/providers", timeout=WINDOWS_TTS_TIMEOUT)
         if response.status_code == 200:
             data = response.json()
             print(f"✓ Windows providers: {list(data.keys())}")
@@ -151,8 +152,11 @@ async def main():
     print("Windows TTS Integration Test")
     print("=" * 40)
     
-    # Set environment variable for testing
-    os.environ['WINDOWS_TTS_ENABLED'] = 'true'
+    # Check if Windows TTS is enabled in config
+    if not WINDOWS_TTS_ENABLED:
+        print("⚠️  WARNING: WINDOWS_TTS_ENABLED = False in config.py")
+        print("   Set WINDOWS_TTS_ENABLED = True to enable Windows TTS integration")
+        print("   Some tests may fail without this setting.\n")
     
     tests = [
         ("Windows Service Health", test_windows_service_health),

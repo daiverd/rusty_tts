@@ -16,7 +16,7 @@ services:
       # Persist audio files between container restarts
       - audio_files:/app/audio_files
       # Optional: Mount local development code (uncomment for development)
-      # - .:/app
+      - .:/app
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8887/health"]
