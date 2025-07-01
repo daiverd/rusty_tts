@@ -287,20 +287,65 @@ def providers():
             result = subprocess.check_output(['balcon.exe', '-l'], stderr=subprocess.STDOUT)
             
             voices = []
+            current_sapi = None
+            
             for line in result.split('\n'):
-                if line.strip():
-                    voice_name = line.strip()
-                    sapi_version = detect_voice_sapi_version(voice_name)
+                line = line.strip()
+                if not line:
+                    continue
+                
+                # Check for SAPI section headers
+                if line.startswith('SAPI 4:'):
+                    current_sapi = 4
+                    continue
+                elif line.startswith('SAPI 5:'):
+                    current_sapi = 5
+                    continue
+                
+                # Skip lines that don't contain voice information
+                if current_sapi is None:
+                    continue
+                
+                # Parse voice information
+                if current_sapi == 4:
+                    # SAPI 4 format: "Alex :: Adult Male #8, American English (TruVoice)"
+                    if '::' in line:
+                        voice_name = line.split('::')[0].strip()
+                        description = line.split('::')[1].strip() if '::' in line else ''
+                    else:
+                        # Skip section headers and invalid lines
+                        continue
+                    
                     voices.append({
                         'name': voice_name,
-                        'sapi_version': sapi_version,
+                        'sapi_version': 4,
+                        'description': description,
                         'features': {
-                            'raw_pcm': sapi_version == 5,
-                            'volume_control': sapi_version == 5,
-                            'rate_range': '0-100' if sapi_version == 4 else '-10 to 10',
-                            'pitch_range': '0-100' if sapi_version == 4 else '-10 to 10'
+                            'raw_pcm': False,
+                            'volume_control': False,
+                            'rate_range': '0-100',
+                            'pitch_range': '0-100',
+                            'multi_language': False
                         }
                     })
+                    
+                elif current_sapi == 5:
+                    # SAPI 5 format: Simple voice name like "Microsoft Sam"
+                    voice_name = line.strip()
+                    # Skip empty lines and section headers
+                    if voice_name and not voice_name.endswith(':'):
+                        voices.append({
+                            'name': voice_name,
+                            'sapi_version': 5,
+                            'description': '',
+                            'features': {
+                                'raw_pcm': True,
+                                'volume_control': True,
+                                'rate_range': '-10 to 10',
+                                'pitch_range': '-10 to 10',
+                                'multi_language': True
+                            }
+                        })
             
             providers_data['balcon'] = {
                 'name': 'Balcon (Windows SAPI)',
