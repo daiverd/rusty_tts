@@ -57,9 +57,8 @@ class BalconProvider(object):
                         voice_name = line.split('::')[0].strip()
                         description = line.split('::')[1].strip() if '::' in line else ''
                     else:
-                        # Fallback if format is different
-                        voice_name = line
-                        description = ''
+                        # Skip section headers and invalid lines
+                        continue
                     
                     voices.append({
                         'name': voice_name,
@@ -78,7 +77,8 @@ class BalconProvider(object):
                 elif current_sapi == 5:
                     # SAPI 5 format: Simple voice name like "Microsoft Sam"
                     voice_name = line.strip()
-                    if voice_name:
+                    # Skip empty lines and section headers
+                    if voice_name and not voice_name.endswith(':'):
                         voices.append({
                             'name': voice_name,
                             'provider': self.name,

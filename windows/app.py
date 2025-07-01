@@ -169,15 +169,22 @@ def synthesize_balcon_advanced(text, voice, rate, pitch, volume):
                 cmd = [
                     'balcon.exe',
                     '-t', text,
-                    '-n', voice,
-                    '-s', str(max(-10, min(10, rate))),
-                    '-p', str(max(-10, min(10, pitch))),
-                    '-v', str(max(0, min(100, volume))),
-                    '-o', '--raw',
-                    '-fr', '22',
-                    '-bt', '16',
-                    '-ch', '1'
+                    '-n', voice
                 ]
+                
+                # Only add rate if non-default
+                if rate != 0:
+                    cmd.extend(['-s', str(max(-10, min(10, rate)))])
+                
+                # Only add pitch if non-default  
+                if pitch != 0:
+                    cmd.extend(['-p', str(max(-10, min(10, pitch)))])
+                
+                # Only add volume if non-default
+                if volume != 100:
+                    cmd.extend(['-v', str(max(0, min(100, volume)))])
+                
+                cmd.extend(['-o', '--raw'])
                 
                 result = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
                 
@@ -201,29 +208,45 @@ def synthesize_balcon_advanced(text, voice, rate, pitch, volume):
         
         try:
             if sapi_version == 4:
-                # SAPI 4 parameter ranges (convert from SAPI 5 ranges)
-                sapi4_rate = max(0, min(100, 50 + rate * 5)) if rate != 0 else 50
-                sapi4_pitch = max(0, min(100, 50 + pitch * 5)) if pitch != 0 else 50
-                
+                # SAPI 4: Convert rate/pitch from SAPI 5 ranges to SAPI 4 ranges
                 cmd = [
                     'balcon.exe',
                     '-t', text,
-                    '-n', voice,
-                    '-s', str(sapi4_rate),
-                    '-p', str(sapi4_pitch),
-                    '-w', tmp_wav
+                    '-n', voice
                 ]
+                
+                # Only add rate if non-default
+                if rate != 0:
+                    sapi4_rate = max(0, min(100, 50 + rate * 5))
+                    cmd.extend(['-s', str(sapi4_rate)])
+                
+                # Only add pitch if non-default  
+                if pitch != 0:
+                    sapi4_pitch = max(0, min(100, 50 + pitch * 5))
+                    cmd.extend(['-p', str(sapi4_pitch)])
+                
+                cmd.extend(['-w', tmp_wav])
             else:
                 # SAPI 5 with WAV output
                 cmd = [
                     'balcon.exe',
                     '-t', text,
-                    '-n', voice,
-                    '-s', str(max(-10, min(10, rate))),
-                    '-p', str(max(-10, min(10, pitch))),
-                    '-v', str(max(0, min(100, volume))),
-                    '-w', tmp_wav
+                    '-n', voice
                 ]
+                
+                # Only add rate if non-default
+                if rate != 0:
+                    cmd.extend(['-s', str(max(-10, min(10, rate)))])
+                
+                # Only add pitch if non-default  
+                if pitch != 0:
+                    cmd.extend(['-p', str(max(-10, min(10, pitch)))])
+                
+                # Only add volume if non-default
+                if volume != 100:
+                    cmd.extend(['-v', str(max(0, min(100, volume)))])
+                
+                cmd.extend(['-w', tmp_wav])
             
             result = subprocess.call(cmd)
             
