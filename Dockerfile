@@ -3,25 +3,21 @@
 # =============================================================================
 FROM python:3.12-slim as builder
 
-# Install build dependencies
+# Install minimal build dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     git \
-    build-essential \
+    gcc \
+    libc6-dev \
+    make \
     autoconf \
     automake \
-    gcc \
-    g++ \
-    make \
     libsndfile1-dev \
-    python3-dev \
-    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Build SAM TTS
 RUN git clone --depth 1 https://github.com/vidarh/SAM.git /tmp/sam && \
     cd /tmp/sam && \
-    # Comment out SDL lines and uncomment non-SDL lines in Makefile
     sed -i 's/^CFLAGS.*USESDL.*/#&/' Makefile && \
     sed -i 's/^LFLAGS.*sdl-config.*/#&/' Makefile && \
     sed -i 's/^#CFLAGS.*Wall.*O2$/CFLAGS = -Wall -O2/' Makefile && \

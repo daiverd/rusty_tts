@@ -8,7 +8,7 @@ import base64
 import subprocess
 import tempfile
 import os
-from .base import BaseTTSEngine
+from . import BaseTTSEngine
 
 
 class WindowsEngine(BaseTTSEngine):
