@@ -4,124 +4,140 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a unified FastAPI-based text-to-speech service that supports multiple TTS engines and providers. The architecture consists of:
+rusty_tts is a unified FastAPI-based text-to-speech service that supports multiple TTS engines and providers. The service provides a REST API to generate audio from text using various synthesis methods including cloud-based APIs and local TTS engines.
 
-1. **Main Linux Service** (`app.py`) - FastAPI server with multiple TTS providers
-2. **Windows Service** (`windows/app.py`) - Python 2.7 Flask service for Windows XP/SAPI integration via balcon.exe
-3. **Provider System** - Modular TTS engine implementations in `providers/` directory
-4. **TTSManager** - Central coordinator that manages all available TTS engines
+## Architecture
 
-The service supports both cloud-based APIs (Pollinations) and local TTS engines (eSpeak, Festival, Flite, DECtalk, SAM, Coqui TTS), with automatic provider detection and voice enumeration.
+### Core Components
 
-## Development Commands
+- `app.py` - Main FastAPI application with REST endpoints
+- `tts_manager.py` - Central manager that coordinates multiple TTS engines
+- `providers/` - Directory containing individual TTS engine implementations
+- `config.py` - Configuration settings for CORS, audio directory, and provider settings
 
-### Running the Service
+### Provider System
 
-**Main Linux Service:**
+The application uses a plugin-like architecture where each TTS provider inherits from `BaseTTSEngine`:
+- Cloud providers: Pollinations
+- Local engines: eSpeak, Festival, Flite, DECtalk, SAM, Coqui TTS
+- Platform-specific: Windows TTS (connects to Windows XP Python 2.7 sub-API)
+- Experimental: LPC-style processing
+
+Each provider auto-detects availability during initialization and only enabled providers are exposed through the API.
+
+### Windows XP Sub-API Architecture
+
+The Windows provider connects to a separate Python 2.7-based service running on Windows XP:
+- **Location**: `windows/` directory contains the complete sub-API
+- **Technology**: Flask-based HTTP API compatible with Python 2.7
+- **Purpose**: Provides access to Windows SAPI 4/5 voices via balcon.exe
+- **Communication**: HTTP requests from main API to Windows service (default port 5000)
+- **Audio Pipeline**: Returns base64-encoded audio data (RAW PCM for SAPI 5, WAV for SAPI 4)
+
+### Audio Pipeline
+
+All TTS engines output audio through a unified pipeline:
+1. TTS engine generates audio (typically WAV)
+2. FFmpeg converts to MP3 with adaptive settings
+3. Files are cached in `audio_files/` directory with hash-based naming
+
+## Common Development Commands
+
+### Running the Application
+
+**Local development:**
 ```bash
 python app.py
-# Runs on http://localhost:8887
 ```
 
-**Windows Service (Python 2.7):**
+**Docker:**
 ```bash
+docker-compose up --build
+```
+
+**Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+**Windows XP Sub-API:**
+```cmd
 cd windows
+pip install -r requirements.txt
 python app.py
-# Runs on http://localhost:5000
-```
-
-**Docker Development:**
-```bash
-# Build and run with docker-compose
-docker-compose up --build
-
-# Run in detached mode
-docker-compose up -d --build
-
-# Development mode (mount local code)
-# Uncomment the volume mapping in docker-compose.yml first
-docker-compose up --build
 ```
 
 ### Testing
 
-**Integration Testing:**
+**Run Windows integration test:**
 ```bash
 python test_windows_integration.py
-# Tests Windows service integration and provider functionality
 ```
 
-**API Testing:**
+**Test API endpoints manually:**
 ```bash
-# Test different providers
-curl "http://localhost:8887/tts?text=Hello+World&provider=espeak&voice=en"
-curl "http://localhost:8887/tts?text=Hello+World&provider=dectalk&voice=0"
-curl "http://localhost:8887/tts?text=Hello+World&provider=sam"
-
-# List available providers
-curl "http://localhost:8887/providers"
-
 # Health check
-curl "http://localhost:8887/health"
+curl http://localhost:8887/health
+
+# List providers
+curl http://localhost:8887/providers
+
+# Generate speech
+curl "http://localhost:8887/tts?text=Hello+World&provider=pollinations&voice=alloy"
 ```
 
-### Dependencies
+### Configuration
 
-**Main Service:**
-```bash
-pip install -r requirements.txt
-# Installs: elevenlabs, fastapi, google-cloud-texttospeech, requests, uvicorn
-```
+- Main config in `config.py`
+- Docker environment variables in `docker-compose.yml`
+- Windows TTS requires separate Windows XP service running on port 5000
+- Windows sub-API config in `windows/config.py`
+- Set `WINDOWS_TTS_ENABLED = True` to enable Windows provider integration
 
-**Windows Service:**
-```bash
-cd windows
-pip install -r requirements.txt
-# Installs Python 2.7 compatible: Flask==0.12.5, requests
-```
+## Key API Endpoints
 
-## Architecture Details
+- `GET /` - API information and available providers
+- `GET /tts` - Generate audio from text (returns JSON with audio URL)
+- `GET /play/{filename}` - Stream MP3 audio files
+- `GET /providers` - List all available providers and voices
+- `GET /files` - List generated audio files
+- `GET /health` - Health check
 
-### Provider System
-- Each TTS engine implements `BaseTTSEngine` interface in `providers/`
-- Engines auto-detect availability via `is_available()` method
-- Voice enumeration through `get_voices()` method
-- Synthesis via async `synthesize()` method
+## Development Notes
 
-### Key Components
-- **TTSManager** (`tts_manager.py`): Central provider coordinator
-- **Config** (`config.py`): Environment-based configuration with CORS, Windows service URL
-- **Providers**: Modular engines supporting different TTS technologies
-  - `pollinations.py`: Cloud-based API
-  - `espeak.py`, `festival.py`, `flite.py`: Linux TTS engines
-  - `dectalk.py`, `sam.py`: Compiled retro TTS engines
-  - `coqui.py`: AI-based TTS models
-  - `windows.py`: HTTP proxy to Windows service
-  - `windows/providers/balcon.py`: SAPI 4/5 integration via balcon.exe
+### Adding New TTS Providers
 
-### Docker Architecture
-- Multi-stage build compiling SAM and DECtalk from source with minimal build dependencies
-- Optimized build stage (uses specific packages instead of build-essential meta-package)
-- Runtime image with minimal size (build tools removed)
-- Health checks and resource limits configured
-- Audio file persistence via Docker volumes
+1. Create new provider class in `providers/` inheriting from `BaseTTSEngine`
+2. Implement required methods: `synthesize()`, `get_voices()`, `is_available()`
+3. Add import to `providers/__init__.py`
+4. Add to engine initialization in `tts_manager.py`
 
-### Windows Integration
-- Separate Python 2.7 service for Windows XP compatibility
-- Automatic SAPI version detection per voice
-- Raw PCM output for SAPI 5, WAV fallback for SAPI 4
-- HTTP API bridge between Linux and Windows services
+### Audio Processing
 
-## Configuration
+- All providers must output to the provided `output_path` as MP3
+- Use `run_tts_pipeline()` or `run_tts_pipeline_with_stdin()` helper functions for consistent FFmpeg processing
+- Audio files are automatically cached based on text+provider+voice hash
 
-### Key Files
-- `config.py`: Main service configuration with hardcoded values
-- `windows/config.py`: Windows service configuration  
-- `docker-compose.yml`: Container orchestration
-- `Dockerfile`: Multi-stage build with TTS engine compilation
+### Windows XP Sub-API Details
 
-## File Caching
-Both services implement MD5-based filename generation for audio caching:
-- Format: `{md5(text_provider_voice)}.mp3`
-- Prevents regeneration of identical requests
-- Files stored in `audio_files/` directory (configurable)
+**SAPI Version Detection:**
+- Automatically detects SAPI 4 vs SAPI 5 for each voice
+- SAPI 5: Raw PCM output, advanced rate/pitch controls (-10 to 10)
+- SAPI 4: WAV file output, basic rate/pitch controls (0-100)
+
+**Integration:**
+- Main API calls Windows service via HTTP at `WINDOWS_TTS_URL` (default: http://localhost:5000)
+- Audio data returned as base64-encoded strings
+- Supports voice detection, synthesis, health checks
+
+**Deployment:**
+- Designed for Windows XP VM deployment
+- Uses Python 2.7 with Flask 0.12.5 (last Python 2.7 compatible version)
+- Requires balcon.exe in same directory as windows/app.py
+
+### Error Handling
+
+- Providers should return `False` from `synthesize()` on failure
+- API returns HTTP 500 with provider-specific error messages
+- Missing providers/voices return HTTP 400 with available options
+- Windows provider gracefully handles sub-API unavailability
