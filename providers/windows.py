@@ -8,6 +8,10 @@ import base64
 import subprocess
 import tempfile
 import os
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 from . import BaseTTSEngine
 
 
@@ -56,7 +60,7 @@ class WindowsEngine(BaseTTSEngine):
                 return voices
             return []
         except Exception as e:
-            print(f"Error getting Windows voices: {e}")
+            logger.error(f"Error getting Windows voices: {e}")
             return []
     
     async def synthesize(self, text, voice, filename):
@@ -92,14 +96,14 @@ class WindowsEngine(BaseTTSEngine):
                     elif audio_format == 'wav':
                         return self._convert_wav_to_mp3(audio_data, filename)
                     else:
-                        print(f"Unknown audio format from Windows service: {audio_format}")
+                        logger.warning(f"Unknown audio format from Windows service: {audio_format}")
                         return False
             else:
-                print(f"Windows service returned error: {response.status_code}")
+                logger.error(f"Windows service returned error: {response.status_code}")
                 return False
             
         except Exception as e:
-            print(f"Windows TTS synthesis error: {e}")
+            logger.error(f"Windows TTS synthesis error: {e}")
             return False
     
     def _convert_raw_pcm_to_mp3(self, pcm_data, output_file, sample_rate, bit_depth, channels):
@@ -124,16 +128,16 @@ class WindowsEngine(BaseTTSEngine):
                 stderr=subprocess.PIPE
             )
             
-            stdout, stderr = process.communicate(input=pcm_data)
+            _stdout, stderr = process.communicate(input=pcm_data)
             
             if process.returncode == 0:
                 return True
             else:
-                print(f"FFmpeg PCM conversion error: {stderr.decode()}")
+                logger.error(f"FFmpeg PCM conversion error: {stderr.decode()}")
                 return False
                 
         except Exception as e:
-            print(f"PCM to MP3 conversion error: {e}")
+            logger.error(f"PCM to MP3 conversion error: {e}")
             return False
     
     def _convert_wav_to_mp3(self, wav_data, output_file):
@@ -155,14 +159,14 @@ class WindowsEngine(BaseTTSEngine):
                 stderr=subprocess.PIPE
             )
             
-            stdout, stderr = process.communicate(input=wav_data)
+            _stdout, stderr = process.communicate(input=wav_data)
             
             if process.returncode == 0:
                 return True
             else:
-                print(f"FFmpeg WAV conversion error: {stderr.decode()}")
+                logger.error(f"FFmpeg WAV conversion error: {stderr.decode()}")
                 return False
                 
         except Exception as e:
-            print(f"WAV to MP3 conversion error: {e}")
+            logger.error(f"WAV to MP3 conversion error: {e}")
             return False

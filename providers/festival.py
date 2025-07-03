@@ -30,4 +30,4 @@ class FestivalEngine(BaseTTSEngine):
         
         festival_cmd = ["festival"]
         
-        return run_tts_pipeline_with_stdin(festival_cmd, festival_script, output_path, engine_name="festival")
+        return run_tts_pipeline_with_stdin(festival_cmd, festival_script, output_path)

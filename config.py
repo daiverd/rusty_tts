@@ -9,7 +9,6 @@ CORS_ORIGINS = [
 
 # Audio configuration
 AUDIO_DIR = "audio_files"
-MAX_TEXT_LENGTH = 1000
 
 # Windows TTS Service configuration
 WINDOWS_TTS_URL = "http://localhost:5000"

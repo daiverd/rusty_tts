@@ -8,6 +8,11 @@ import subprocess
 import tempfile
 import os
 import base64
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils import safe_split_lines, safe_subprocess_output, safe_encode_for_subprocess
 
 class BalconProvider(object):
     """Balcon TTS Provider using balcon.exe"""
@@ -27,13 +32,13 @@ class BalconProvider(object):
             return []
         
         try:
-            result = subprocess.check_output([self.executable_path, '-l'], 
-                                           stderr=subprocess.STDOUT)
+            result = safe_subprocess_output([self.executable_path, '-l'])
             
             voices = []
             current_sapi = None
             
-            for line in result.split('\n'):
+            # Handle mixed line endings safely
+            for line in safe_split_lines(result):
                 # Don't strip yet - need to check indentation
                 if not line.strip():
                     continue
@@ -134,10 +139,14 @@ class BalconProvider(object):
     
     def _synthesize_raw_pcm(self, text, voice, rate, pitch, volume):
         """Synthesize using SAPI 5 raw PCM output"""
+        # Safely encode text and voice for subprocess
+        text_encoded = safe_encode_for_subprocess(text)
+        voice_encoded = safe_encode_for_subprocess(voice)
+        
         cmd = [
             self.executable_path,
-            '-t', text,
-            '-n', voice
+            '-t', text_encoded,
+            '-n', voice_encoded
         ]
         
         # Only add rate if non-default
@@ -167,16 +176,23 @@ class BalconProvider(object):
     
     def _synthesize_wav_file(self, text, voice, rate, pitch, volume, sapi_version):
         """Synthesize using WAV file output"""
-        tmp_wav = tempfile.mktemp(suffix='.wav')
+        # Use secure temporary file creation
+        tmp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+        tmp_wav = tmp_file.name
+        tmp_file.close()  # Close handle but keep file
         
         try:
+            # Safely encode text and voice for subprocess
+            text_encoded = safe_encode_for_subprocess(text)
+            voice_encoded = safe_encode_for_subprocess(voice)
+            
             if sapi_version == 4:
                 # SAPI 4: Convert rate/pitch from SAPI 5 ranges to SAPI 4 ranges
                 # SAPI 5 range: -10 to 10, SAPI 4 range: 0 to 100 (50 = normal)
                 cmd = [
                     self.executable_path,
-                    '-t', text,
-                    '-n', voice
+                    '-t', text_encoded,
+                    '-n', voice_encoded
                 ]
                 
                 # Only add rate if non-default
@@ -195,8 +211,8 @@ class BalconProvider(object):
                 # SAPI 5 with WAV output
                 cmd = [
                     self.executable_path,
-                    '-t', text,
-                    '-n', voice
+                    '-t', text_encoded,
+                    '-n', voice_encoded
                 ]
                 
                 # Only add rate if non-default

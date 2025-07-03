@@ -19,8 +19,8 @@ app.add_middleware(
 )
 
 # Create audio directory
-AUDIO_DIR = Path(AUDIO_DIR)
-AUDIO_DIR.mkdir(exist_ok=True)
+audio_dir = Path(AUDIO_DIR)
+audio_dir.mkdir(exist_ok=True)
 
 
 # Initialize TTS Manager
@@ -35,7 +35,7 @@ def generate_filename(text: str, provider: str, voice: str) -> str:
 async def create_audio_file(text: str, provider: str, voice: str) -> str:
     """Create audio file using specified provider"""
     filename = generate_filename(text, provider, voice)
-    filepath = AUDIO_DIR / filename
+    filepath = audio_dir / filename
     
     # If file already exists, return the filename
     if filepath.exists():
@@ -147,13 +147,17 @@ async def text_to_speech(
             }
         }
         
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=500, detail="Audio generation failed: missing system dependency")
+    except PermissionError as e:
+        raise HTTPException(status_code=500, detail="Audio generation failed: insufficient permissions")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Audio generation failed: {str(e)}")
 
 @app.get("/play/{filename}")
 async def play_audio_file(filename: str):
     """Stream a specific audio file for inline playback"""
-    filepath = AUDIO_DIR / filename
+    filepath = audio_dir / filename
     
     if not filepath.exists() or not filepath.name.endswith('.mp3'):
         raise HTTPException(status_code=404, detail="Audio file not found")
@@ -180,7 +184,7 @@ async def list_audio_files(request: Request):
     files = []
     base_url = get_base_url(request)
     
-    for file in AUDIO_DIR.glob("*.mp3"):
+    for file in audio_dir.glob("*.mp3"):
         files.append({
             "filename": file.name,
             "url": f"{base_url}/play/{file.name}",

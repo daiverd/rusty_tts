@@ -30,4 +30,4 @@ class CoquiTTSEngine(BaseTTSEngine):
             "--pipe_out"  # Output WAV to stdout
         ]
         
-        return run_tts_pipeline(tts_cmd, output_path, engine_name="coqui")
+        return run_tts_pipeline(tts_cmd, output_path)

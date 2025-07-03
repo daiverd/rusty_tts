@@ -29,4 +29,4 @@ class EspeakEngine(BaseTTSEngine):
             text
         ]
         
-        return run_tts_pipeline(espeak_cmd, output_path, engine_name="espeak")
+        return run_tts_pipeline(espeak_cmd, output_path)

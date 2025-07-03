@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import subprocess
 
@@ -10,7 +10,7 @@ class TTSProvider:
     name: str
     voices: List[str]
     enabled: bool = True
-    config: Dict = None
+    config: Dict = field(default_factory=dict)
 
 class BaseTTSEngine(ABC):
     """Abstract base class for TTS engines"""
@@ -55,7 +55,7 @@ def get_adaptive_mp3_settings(input_format: str = "wav") -> List[str]:
     ]
 
 
-def run_tts_pipeline(tts_cmd: List[str], output_path: Path, input_format: str = "wav", engine_name: str = "unknown") -> bool:
+def run_tts_pipeline(tts_cmd: List[str], output_path: Path, input_format: str = "wav") -> bool:
     """
     Run TTS command and pipe output through FFmpeg to create MP3
     
@@ -63,7 +63,6 @@ def run_tts_pipeline(tts_cmd: List[str], output_path: Path, input_format: str = 
         tts_cmd: Command to run TTS engine
         output_path: Path where MP3 file should be saved
         input_format: Audio format from TTS engine (default: wav)
-        engine_name: Name of TTS engine (unused - kept for compatibility)
     
     Returns:
         True if successful, False otherwise
@@ -108,7 +107,7 @@ def run_tts_pipeline(tts_cmd: List[str], output_path: Path, input_format: str = 
         return False
 
 
-def run_tts_pipeline_with_stdin(tts_cmd: List[str], stdin_data: str, output_path: Path, input_format: str = "wav", engine_name: str = "unknown") -> bool:
+def run_tts_pipeline_with_stdin(tts_cmd: List[str], stdin_data: str, output_path: Path, input_format: str = "wav") -> bool:
     """
     Run TTS command with stdin input and pipe output through FFmpeg to create MP3
     
@@ -117,7 +116,6 @@ def run_tts_pipeline_with_stdin(tts_cmd: List[str], stdin_data: str, output_path
         stdin_data: Data to send to TTS engine via stdin
         output_path: Path where MP3 file should be saved
         input_format: Audio format from TTS engine (default: wav)
-        engine_name: Name of TTS engine (unused - kept for compatibility)
     
     Returns:
         True if successful, False otherwise

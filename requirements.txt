@@ -1,5 +1,3 @@
-elevenlabs
 fastapi
-google-cloud-texttospeech==2.27.0
 requests
 uvicorn
