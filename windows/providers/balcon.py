@@ -63,23 +63,22 @@ class BalconProvider(object):
                 # Parse voice information based on SAPI version
                 if current_sapi == 4:
                     # SAPI 4 format: "Alex :: Adult Male #8, American English (TruVoice)"
-                    if '::' in line:
-                        voice_name = line.split('::')[0].strip()
-                        description = line.split('::')[1].strip()
-                        
-                        voices.append({
-                            'name': voice_name,
-                            'provider': self.name,
-                            'sapi_version': 4,
-                            'description': description,
-                            'features': {
-                                'raw_pcm': False,
-                                'volume_control': False,
-                                'rate_range': '0-100',
-                                'pitch_range': '0-100',
-                                'multi_language': False
-                            }
-                        })
+                    voice_name = line
+                    description = ''
+                    
+                    voices.append({
+                        'name': voice_name,
+                        'provider': self.name,
+                        'sapi_version': 4,
+                        'description': description,
+                        'features': {
+                            'raw_pcm': False,
+                            'volume_control': False,
+                            'rate_range': '0-100',
+                            'pitch_range': '0-100',
+                            'multi_language': False
+                        }
+                    })
                     
                 elif current_sapi == 5:
                     # SAPI 5 format: Simple voice name like "Microsoft Sam"
