@@ -19,6 +19,11 @@ services:
       - audio_files:/app/audio_files
       # Optional: Mount local development code (uncomment for development)
       - .:/app
+      # Proprietary Apple IIe/Disk II/speech-card ROMs for the MAME-based
+      # Textalker/Echo II Plus automation (gitignored, sourced manually -
+      # see mame_roms/apple2ee/). Read-only: MAME never writes to its
+      # rompath.
+      - ./mame_roms:/mame_roms:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8887/health"]

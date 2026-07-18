@@ -245,6 +245,7 @@ from .windows import WindowsEngine
 from .tms5220 import Tms5220Engine
 from .sp0256 import Sp0256Engine
 from .votrax import VotraxEngine
+from .textalker import TextalkerEngine
 
 __all__ = [
     'TTSProvider',
@@ -261,4 +262,5 @@ __all__ = [
     'Tms5220Engine',
     'Sp0256Engine',
     'VotraxEngine',
+    'TextalkerEngine',
 ]

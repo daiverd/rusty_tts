@@ -59,6 +59,31 @@ RUN git clone --depth 1 https://github.com/tornupnegatives/TMS-Express.git /tmp/
     rm -rf /tmp/tms-express
 
 # =============================================================================
+# MAME BUILD STAGE - Scoped Apple IIe build for the Textalker/Echo II Plus
+# automation (providers/textalker.py). Separate stage so unrelated app
+# changes don't invalidate this ~15min build's Docker layer cache.
+# =============================================================================
+FROM debian:trixie-slim AS mame-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    build-essential \
+    python3 \
+    libsdl2-dev \
+    libsdl2-ttf-dev \
+    pkg-config \
+    libfontconfig1-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 https://github.com/mamedev/mame /mame
+WORKDIR /mame
+
+# Scoped build: only the apple2e driver (pulls in a2bus/echoplus/tms5220
+# and their dependencies automatically) - no Qt debugger, no dev tools.
+RUN make SOURCES=src/mame/apple/apple2e.cpp USE_QTDEBUG=0 REGENIE=1 NOWERROR=1 -j"$(nproc)"
+
+# =============================================================================
 # RUNTIME STAGE - Final application image
 # =============================================================================
 FROM python:3.12-slim
@@ -86,8 +111,26 @@ RUN apt-get update && apt-get install -y \
     # Audio libraries (runtime only)
     libsndfile1 \
     libportaudio2 \
-    libportaudiocpp0 && \
+    libportaudiocpp0 \
+    # Runtime libs for the vendored MAME binary (Textalker automation)
+    libsdl2-2.0-0 \
+    libsdl2-ttf-2.0-0 \
+    libfontconfig1 \
+    libasound2 \
+    # JRE for AppleCommander (writes the per-request HELLO program onto
+    # the Textalker disk image - Textalker automation)
+    default-jre-headless && \
     rm -rf /var/lib/apt/lists/*
+
+# AppleCommander (https://github.com/AppleCommander/AppleCommander,
+# GPL-2.0): reads/writes DOS 3.3/ProDOS disk images, including tokenizing
+# plain-text Applesoft BASIC source directly onto a disk. Vendored as a
+# standalone jar, invoked only via subprocess (never linked), so its
+# GPL-2.0 doesn't propagate to rusty_tts.
+RUN mkdir -p /opt/applecommander && \
+    curl -fsSL "https://github.com/AppleCommander/AppleCommander/releases/download/13.2/AppleCommander-ac-13.2.jar" \
+        -o /opt/applecommander/ac.jar && \
+    echo "354dd16c355982c80e92fce117cf44c16b87e50a5dcc2030997f1e02564de7b9  /opt/applecommander/ac.jar" | sha256sum -c -
 
 # Copy compiled TTS engines from builder stage
 COPY --from=builder /usr/local/bin/sam /usr/local/bin/
@@ -96,6 +139,12 @@ COPY --from=builder /usr/local/bin/tms-express /usr/local/bin/
 COPY --from=builder /opt/dectalk /opt/dectalk
 RUN ln -s /opt/dectalk/say /usr/bin/dectalk && \
     echo "/opt/dectalk/lib" > /etc/ld.so.conf.d/dectalk.conf && ldconfig
+
+# Copy the vendored MAME binary (Apple IIe/Echo II Plus/Textalker
+# automation - providers/textalker.py). Proprietary ROMs/disk image are
+# NOT baked in here; they're mounted read-only at runtime from a
+# gitignored mame_roms/ directory (see scripts/fetch_roms.sh).
+COPY --from=mame-builder /mame/mame /opt/mame/mame
 
 # Copy requirements first for better Docker layer caching
 COPY requirements.txt .

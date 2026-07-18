@@ -4,7 +4,7 @@ from providers import (
     TTSProvider, BaseTTSEngine,
     PollinationsEngine, EspeakEngine, FestivalEngine, FliteEngine,
     DECtalkEngine, LPCEngine, SAMEngine, CoquiTTSEngine, WindowsEngine,
-    Tms5220Engine, Sp0256Engine, VotraxEngine
+    Tms5220Engine, Sp0256Engine, VotraxEngine, TextalkerEngine
 )
 
 
@@ -30,6 +30,7 @@ class TTSManager:
             "windows": WindowsEngine(),
             "sp0256": Sp0256Engine(),
             "votrax": VotraxEngine(),
+            "textalker": TextalkerEngine(),
             # tms5220 is intentionally not registered: LPC-resynthesis of
             # another engine's audio through the chip (see providers/tms5220.py)
             # is functional but doesn't sound good (sibilant/fricative sounds

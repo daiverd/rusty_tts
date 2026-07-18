@@ -2,19 +2,25 @@
 # Fetches the proprietary chip ROM/vocabulary dumps some retro speech-chip
 # providers need (see native/retrochip and providers/sp0256.py, votrax.py,
 # etc.) into a gitignored roms/ directory, verifying CRC32 against the
-# values MAME's own device sources declare.
+# values MAME's own device sources declare. Also fetches the Apple IIe/
+# Disk II system ROMs and the real Textalker driver disk image needed for
+# the MAME-based Echo II Plus automation (see providers/tms5220.py), into
+# a gitignored mame_roms/ directory.
 #
 # These files are NOT redistributed by this repo or baked into the Docker
-# image - they're proprietary silicon-vendor data (GI/Votrax) with no
-# license grant from this project. This script's sources are MAME ROM-set
-# collections already hosted on the public Internet Archive. Run it
-# yourself, once, on a machine you control.
+# image - they're proprietary silicon-vendor/publisher data (GI/Votrax/TI/
+# Apple/Street Electronics) with no license grant from this project. This
+# script's sources are MAME ROM-set collections and platform BIOS packs
+# already hosted on the public Internet Archive, plus one long-standing
+# Apple II preservation mirror for a single PROM not present in that
+# collection under an obvious name. Run it yourself, once, on a machine
+# you control.
 #
 # Usage: scripts/fetch_roms.sh
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-mkdir -p roms
+mkdir -p roms mame_roms/apple2ee mame_roms/disks
 
 need() {
     command -v "$1" >/dev/null 2>&1 || { echo "fetch_roms.sh: '$1' is required (apt install $2)" >&2; exit 1; }
@@ -91,4 +97,54 @@ fetch_and_extract \
     "roms" "sc01a.bin" \
     "fc416227"
 
-echo "Done. ROMs are in roms/ (gitignored)."
+# --- Apple IIe / Disk II / Echo II Plus system ROMs (used by the MAME-based
+#     Textalker automation, see docker-compose.yml's mame_roms mount) ---
+
+for pair in \
+    "341-0132-d.e12:c506efb9" \
+    "342-0265-a.chr:2651014d" \
+    "342-0303-a.e8:95e10034" \
+    "342-0304-a.e10:443aa7c4"
+do
+    fname="${pair%%:*}"
+    crc="${pair##*:}"
+    fetch_and_extract \
+        "Apple IIe enhanced ROM (${fname})" \
+        "https://archive.org/download/mame-0.272-romset-complete-merged/mess/apple2e.7z" \
+        "${fname}" \
+        "mame_roms/apple2ee" "${fname}" \
+        "${crc}"
+done
+
+fetch_and_extract \
+    "Disk II P5 PROM" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/devices/a2diskiing.7z" \
+    "341-0027-a.p5" \
+    "mame_roms/apple2ee" "341-0027-a.p5" \
+    "ce7144f6"
+
+# Not present under an obvious name in the archive.org MAME romset
+# collection; sourced from the long-standing Apple II Documentation
+# Project mirror instead.
+fetch_and_extract \
+    "Disk II P6 PROM" \
+    "https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Disk%20Drive%20Controllers/Apple%20Disk%20II%20Interface%20Card/ROM%20Images/Apple%20Disk%20II%2016%20Sector%20Interface%20Card%20ROM%20P6%20-%20341-0028.bin" \
+    "341-0028-a.rom" \
+    "mame_roms/apple2ee" "341-0028-a.rom" \
+    "b72a2c70"
+
+# Votrax ROM is also usable as an alternate voice card on this machine;
+# reuse the copy already fetched into roms/ above.
+cp -n "roms/sc01a.bin" "mame_roms/apple2ee/sc01a.bin" 2>/dev/null || true
+
+# --- Textalker driver disk (real historical Echo II Plus screen-reader
+#     software, commercial/copyrighted, not just a silicon-vendor ROM) ---
+
+fetch_and_extract \
+    "Textalker 1.3 disk image" \
+    "https://archive.org/download/Textalker1.3/Textalker_1.3.dsk" \
+    "Textalker_1.3.dsk" \
+    "mame_roms/disks" "Textalker_1.3.dsk" \
+    "00da4aef"
+
+echo "Done. ROMs are in roms/ and mame_roms/ (both gitignored)."

@@ -195,3 +195,8 @@ cython_debug/
 # Proprietary chip ROM/vocabulary dumps (fetched via scripts/fetch_roms.sh,
 # not redistributable - see native/retrochip and providers/sp0256.py etc.)
 /roms/
+
+# Proprietary Apple IIe/Disk II/speech-card system ROMs for the MAME-based
+# Textalker/Echo II Plus automation (see docker-compose.yml mount). Not
+# redistributable - sourced manually, see conversation/notes for provenance.
+/mame_roms/
