@@ -3,7 +3,8 @@ from pathlib import Path
 from providers import (
     TTSProvider, BaseTTSEngine,
     PollinationsEngine, EspeakEngine, FestivalEngine, FliteEngine,
-    DECtalkEngine, LPCEngine, SAMEngine, CoquiTTSEngine, WindowsEngine
+    DECtalkEngine, LPCEngine, SAMEngine, CoquiTTSEngine, WindowsEngine,
+    Tms5220Engine, Sp0256Engine, VotraxEngine
 )
 
 
@@ -27,6 +28,14 @@ class TTSManager:
             "sam": SAMEngine(),
             "coqui": CoquiTTSEngine(),
             "windows": WindowsEngine(),
+            "sp0256": Sp0256Engine(),
+            "votrax": VotraxEngine(),
+            # tms5220 is intentionally not registered: LPC-resynthesis of
+            # another engine's audio through the chip (see providers/tms5220.py)
+            # is functional but doesn't sound good (sibilant/fricative sounds
+            # frequently trigger a loud "LPC whistle", a real vocoder artifact
+            # that's hard to tune away without hurting fidelity elsewhere).
+            # Revisit if driven by real historical vocabulary ROM data instead.
         }
         
         for name, engine in engines.items():

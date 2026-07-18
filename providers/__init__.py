@@ -163,6 +163,75 @@ def run_tts_pipeline_with_stdin(tts_cmd: List[str], stdin_data: str, output_path
     except Exception:
         return False
 
+def run_tts_pipeline_stdin_raw(tts_cmd: List[str], stdin_data: bytes, output_path: Path,
+                                sample_rate: int, channels: int = 1) -> bool:
+    """
+    Run a TTS command that reads a raw byte stream from stdin and writes raw
+    PCM (s16le) to stdout, then pipe that through FFmpeg to create MP3.
+
+    This is the combination `run_tts_pipeline_with_stdin` and `run_tts_pipeline`
+    don't cover: stdin input (like Festival's script) *and* raw PCM output with
+    explicit sample rate/channels (like DECtalk's manual ffmpeg args), needed by
+    the retrochip speech-chip emulator CLI.
+
+    Args:
+        tts_cmd: Command to run TTS engine
+        stdin_data: Raw bytes to send to TTS engine via stdin (e.g. allophone
+            codes or LPC frame bytes, not text)
+        output_path: Path where MP3 file should be saved
+        sample_rate: Sample rate of the raw PCM the tts_cmd emits
+        channels: Channel count of the raw PCM the tts_cmd emits
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        mp3_settings = get_adaptive_mp3_settings("s16le")
+
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-f", "s16le",
+            "-ar", str(sample_rate),
+            "-ac", str(channels),
+            "-i", "pipe:0",
+            # Chip-emulator/LPC-frame output loudness varies a lot depending
+            # on the source voice's own gain analysis (an upstream LPC
+            # encoder's relative gain normalization can land much quieter
+            # for some source voices than others) - apply integrated-loudness
+            # normalization here so every voice on this path is audible.
+            "-af", "loudnorm=I=-14:TP=-1:LRA=11",
+            *mp3_settings,
+            str(output_path),
+            "-y"
+        ]
+
+        tts_process = subprocess.Popen(
+            tts_cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        ffmpeg_process = subprocess.Popen(
+            ffmpeg_cmd,
+            stdin=tts_process.stdout,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        tts_process.stdin.write(stdin_data)
+        tts_process.stdin.close()
+        tts_process.stdout.close()
+
+        ffmpeg_output, ffmpeg_error = ffmpeg_process.communicate()
+        tts_process.wait()
+
+        return ffmpeg_process.returncode == 0 and output_path.exists()
+
+    except Exception:
+        return False
+
+
 # Import all engine implementations
 from .pollinations import PollinationsEngine
 from .espeak import EspeakEngine
@@ -173,6 +242,9 @@ from .lpc import LPCEngine
 from .sam import SAMEngine
 from .coqui import CoquiTTSEngine
 from .windows import WindowsEngine
+from .tms5220 import Tms5220Engine
+from .sp0256 import Sp0256Engine
+from .votrax import VotraxEngine
 
 __all__ = [
     'TTSProvider',
@@ -186,4 +258,7 @@ __all__ = [
     'SAMEngine',
     'CoquiTTSEngine',
     'WindowsEngine',
+    'Tms5220Engine',
+    'Sp0256Engine',
+    'VotraxEngine',
 ]

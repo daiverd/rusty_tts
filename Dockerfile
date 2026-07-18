@@ -8,8 +8,11 @@ RUN apt-get update && apt-get install -y \
     wget \
     git \
     gcc \
+    g++ \
     libc6-dev \
     make \
+    cmake \
+    pkg-config \
     autoconf \
     automake \
     libsndfile1-dev \
@@ -34,6 +37,26 @@ RUN git clone --depth 1 https://github.com/dectalk/dectalk.git /tmp/dectalk && \
     make -j && \
     make install && \
     rm -rf /tmp/dectalk
+
+# Build retrochip: our standalone port of MAME's speech-chip cores
+# (see native/retrochip/, BSD-3-Clause) plus the CLI that drives them
+COPY native/retrochip /tmp/retrochip-src
+RUN g++ -Wall -O2 -std=c++17 -o /usr/local/bin/retrochip \
+        /tmp/retrochip-src/main.cpp /tmp/retrochip-src/tms5220.cpp \
+        /tmp/retrochip-src/sp0256.cpp /tmp/retrochip-src/votrax.cpp && \
+    rm -rf /tmp/retrochip-src
+
+# Build TMS-Express: WAV -> TMS5220-native LPC-10 frame encoder
+# (https://github.com/tornupnegatives/TMS-Express, GPL-3.0). Vendored here as
+# a standalone compiled CLI, invoked only via subprocess by this project's
+# Python code (never linked), so its GPL-3.0 does not propagate to rusty_tts.
+RUN git clone --depth 1 https://github.com/tornupnegatives/TMS-Express.git /tmp/tms-express && \
+    cd /tmp/tms-express && \
+    cmake -B build -DCMAKE_BUILD_TYPE=Release \
+        -DTMSEXPRESS_BUILD_TESTS=OFF -DTMSEXPRESS_BUILD_GUI=OFF && \
+    cmake --build build --config Release -j"$(nproc)" && \
+    cp build/tmsexpress /usr/local/bin/tms-express && \
+    rm -rf /tmp/tms-express
 
 # =============================================================================
 # RUNTIME STAGE - Final application image
@@ -68,6 +91,8 @@ RUN apt-get update && apt-get install -y \
 
 # Copy compiled TTS engines from builder stage
 COPY --from=builder /usr/local/bin/sam /usr/local/bin/
+COPY --from=builder /usr/local/bin/retrochip /usr/local/bin/
+COPY --from=builder /usr/local/bin/tms-express /usr/local/bin/
 COPY --from=builder /opt/dectalk /opt/dectalk
 RUN ln -s /opt/dectalk/say /usr/bin/dectalk && \
     echo "/opt/dectalk/lib" > /etc/ld.so.conf.d/dectalk.conf && ldconfig
@@ -83,6 +108,17 @@ RUN pip install --no-cache-dir --upgrade pip && \
     rm -rf ~/.cache/pip && \
     rm -rf /tmp/* && \
     find /usr/local -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+# Pre-bake g2p_en's NLTK data (used by providers/votrax.py) so it's not
+# fetched from the network at request time. NLTK data location naming
+# changed between versions (averaged_perceptron_tagger vs the _eng
+# variant); grab both so it resolves regardless of the installed nltk.
+ENV NLTK_DATA=/usr/local/share/nltk_data
+RUN python -c "\
+import nltk; \
+nltk.download('cmudict', download_dir='/usr/local/share/nltk_data'); \
+nltk.download('averaged_perceptron_tagger', download_dir='/usr/local/share/nltk_data'); \
+nltk.download('averaged_perceptron_tagger_eng', download_dir='/usr/local/share/nltk_data')"
 
 # Copy application code
 COPY . .

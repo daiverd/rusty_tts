@@ -192,3 +192,6 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+# Proprietary chip ROM/vocabulary dumps (fetched via scripts/fetch_roms.sh,
+# not redistributable - see native/retrochip and providers/sp0256.py etc.)
+/roms/
