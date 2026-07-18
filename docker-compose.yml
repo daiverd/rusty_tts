@@ -6,7 +6,9 @@ services:
       # target: builder
     container_name: rusty-tts-app
     ports:
-      - "8887:8887"
+      - "127.0.0.1:8887:8887"
+    networks:
+      - rusty
     environment:
       # CORS configuration - customize as needed
       - CORS_ORIGINS=http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080,https://tts.example.com
@@ -54,5 +56,5 @@ volumes:
     driver: local
 
 networks:
-  default:
-    name: rusty-tts-network
+  rusty:
+    external: true
