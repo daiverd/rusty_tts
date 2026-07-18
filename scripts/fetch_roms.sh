@@ -4,8 +4,10 @@
 # etc.) into a gitignored roms/ directory, verifying CRC32 against the
 # values MAME's own device sources declare. Also fetches the Apple IIe/
 # Disk II system ROMs and the real Textalker driver disk image needed for
-# the MAME-based Echo II Plus automation (see providers/tms5220.py), into
-# a gitignored mame_roms/ directory.
+# the MAME-based Echo II Plus automation (see providers/textalker.py), plus
+# the firmware ROMs for the Votrax Type 'N Talk and Personal Speech System
+# machine automations (see providers/votrax_tnt.py, votrax_pss.py), into a
+# gitignored mame_roms/ directory.
 #
 # These files are NOT redistributed by this repo or baked into the Docker
 # image - they're proprietary silicon-vendor/publisher data (GI/Votrax/TI/
@@ -20,7 +22,7 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-mkdir -p roms mame_roms/apple2ee mame_roms/disks
+mkdir -p roms mame_roms/apple2ee mame_roms/disks mame_roms/votrtnt mame_roms/votrpss
 
 need() {
     command -v "$1" >/dev/null 2>&1 || { echo "fetch_roms.sh: '$1' is required (apt install $2)" >&2; exit 1; }
@@ -146,5 +148,35 @@ fetch_and_extract \
     "Textalker_1.3.dsk" \
     "mame_roms/disks" "Textalker_1.3.dsk" \
     "00da4aef"
+
+# --- Votrax Type 'N Talk (standalone RS-232 speech synthesizer, 1980) ---
+
+fetch_and_extract \
+    "Votrax Type 'N Talk firmware" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/mess/votrtnt.7z" \
+    "cn49752n.bin" \
+    "mame_roms/votrtnt" "cn49752n.bin" \
+    "a44e1af3"
+
+cp -n "roms/sc01a.bin" "mame_roms/votrtnt/sc01a.bin" 2>/dev/null || true
+
+# --- Votrax Personal Speech System (Z80-based speech synthesizer, 1982) ---
+
+for pair in \
+    "u-2.v3.c.bin:410c58cf" \
+    "u-3.v3.c.bin:1439492e" \
+    "u-4.v3.1.bin:0b7c4260"
+do
+    fname="${pair%%:*}"
+    crc="${pair##*:}"
+    fetch_and_extract \
+        "Votrax Personal Speech System ROM (${fname})" \
+        "https://archive.org/download/mame-0.272-romset-complete-merged/mess/votrpss.7z" \
+        "${fname}" \
+        "mame_roms/votrpss" "${fname}" \
+        "${crc}"
+done
+
+cp -n "roms/sc01a.bin" "mame_roms/votrpss/sc01a.bin" 2>/dev/null || true
 
 echo "Done. ROMs are in roms/ and mame_roms/ (both gitignored)."

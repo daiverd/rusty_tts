@@ -1,16 +1,13 @@
-import array
 import os
-import re
 import subprocess
 import tempfile
-import wave
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List
 
 from . import BaseTTSEngine
+from . import _mame_audio as mame_audio
 
-_MAME_BIN = Path("/opt/mame/mame")
-_ROM_ROOT = Path("/mame_roms")
+_ROM_ROOT = mame_audio.ROM_ROOT
 _DISK_IMAGE = _ROM_ROOT / "disks" / "Textalker_1.3.dsk"
 _LUA_SCRIPT = Path(__file__).resolve().parent.parent / "native" / "mame-textalker" / "textalker_capture.lua"
 _APPLECOMMANDER_JAR = Path("/opt/applecommander/ac.jar")
@@ -23,15 +20,6 @@ _REQUIRED_ROMS = [
     "apple2ee/341-0027-a.p5",
     "apple2ee/341-0028-a.rom",
 ]
-
-_MAX_TEXT_LEN = 200
-_SILENCE_THRESHOLD = 400
-
-
-def _sanitize(text: str) -> str:
-    text = re.sub(r"[^\x20-\x7e]", " ", text).replace('"', "")
-    text = text.strip()
-    return text[:_MAX_TEXT_LEN] or "HELLO"
 
 
 def _build_hello_source(text: str) -> bytes:
@@ -64,91 +52,6 @@ def _write_hello(disk_path: Path, text: str) -> bool:
     return proc.returncode == 0
 
 
-def _trim_silence(chan: array.array, sr: int, pad_s: float = 0.2) -> Optional[Tuple[int, int]]:
-    win = max(1, sr // 20)
-    n = len(chan)
-    first = None
-    last = None
-    for i in range(0, n - win, win):
-        seg = chan[i:i + win]
-        m = max(abs(x) for x in seg)
-        if m > _SILENCE_THRESHOLD:
-            if first is None:
-                first = i
-            last = i + win
-    if first is None:
-        return None
-    pad = int(pad_s * sr)
-    return max(0, first - pad), min(n, last + pad)
-
-
-def _extract_speech_channel(wav_path: Path, min_start_seconds: float = 0.0) -> Optional[Tuple[array.array, int]]:
-    """MAME's -wavwrite mixes every sound device onto its own channel. The
-    Echo Plus card has a TMS5220C plus two AY-3-8913 PSGs sharing the bus,
-    so real speech ends up on one channel among several - disk-motor click
-    noise and DC bias on the others stay within a narrow range, while
-    speech clips to full scale and has a wide dynamic range. Picking the
-    channel with the largest min/max spread reliably isolates it without
-    hardcoding a channel index tied to this exact device enumeration."""
-    with wave.open(str(wav_path), "rb") as w:
-        sr = w.getframerate()
-        ch = w.getnchannels()
-        sw = w.getsampwidth()
-        n = w.getnframes()
-        raw = w.readframes(n)
-    if sw != 2 or n == 0:
-        return None
-
-    samples = array.array('h')
-    samples.frombytes(raw)
-
-    best_ch = None
-    best_range = -1
-    for c in range(ch):
-        chan = samples[c::ch]
-        rng = max(chan) - min(chan)
-        if rng > best_range:
-            best_range = rng
-            best_ch = c
-
-    if best_ch is None or best_range < 1000:
-        return None
-
-    chan = samples[best_ch::ch]
-
-    # Everything before Textalker's fixed startup banner finishes is its
-    # own installer text, not the requested phrase (see
-    # textalker_capture.lua's "speech_starts_at_seconds" marker). Drop it
-    # before silence-trimming.
-    floor_sample = min(len(chan), max(0, int(min_start_seconds * sr)))
-    chan = chan[floor_sample:]
-
-    bounds = _trim_silence(chan, sr)
-    if bounds is None:
-        return None
-    start, end = bounds
-    return chan[start:end], sr
-
-
-_SPEECH_MARKER_RE = re.compile(rb"speech_starts_at_seconds=([\d.]+)")
-
-
-def _parse_speech_marker(mame_stdout: bytes) -> float:
-    match = _SPEECH_MARKER_RE.search(mame_stdout)
-    return float(match.group(1)) if match else 0.0
-
-
-def _encode_mp3(chan: array.array, sr: int, output_path: Path) -> bool:
-    ffmpeg_cmd = [
-        "ffmpeg", "-f", "s16le", "-ar", str(sr), "-ac", "1",
-        "-i", "pipe:0",
-        "-af", "loudnorm",
-        str(output_path), "-y",
-    ]
-    proc = subprocess.run(ffmpeg_cmd, input=chan.tobytes(), capture_output=True)
-    return proc.returncode == 0 and output_path.exists()
-
-
 class TextalkerEngine(BaseTTSEngine):
     """Authentic Echo II Plus / Textalker 1.3 voice. Boots a real Apple //e
     + Echo Plus (TMS5220C) emulation via MAME and records the genuine 1981
@@ -172,7 +75,7 @@ class TextalkerEngine(BaseTTSEngine):
         return ["textalker"]
 
     def is_available(self) -> bool:
-        if not _MAME_BIN.exists() or not _DISK_IMAGE.exists():
+        if not mame_audio.MAME_BIN.exists() or not _DISK_IMAGE.exists():
             return False
         if not _APPLECOMMANDER_JAR.exists():
             return False
@@ -180,7 +83,7 @@ class TextalkerEngine(BaseTTSEngine):
 
     async def synthesize(self, text: str, voice: str, output_path: Path) -> bool:
         try:
-            sanitized = _sanitize(text)
+            sanitized = mame_audio.sanitize_text(text)
             wait_after = min(60.0, 3.0 + 0.4 * len(sanitized))
             seconds_to_run = int(15 + wait_after)
 
@@ -196,7 +99,7 @@ class TextalkerEngine(BaseTTSEngine):
                 env["TEXTALKER_WAIT_AFTER"] = str(wait_after)
 
                 cmd = [
-                    str(_MAME_BIN), "apple2ee",
+                    str(mame_audio.MAME_BIN), "apple2ee",
                     "-rompath", str(_ROM_ROOT),
                     "-sl4", "echoiiplus",
                     "-flop1", str(disk_copy),
@@ -213,12 +116,12 @@ class TextalkerEngine(BaseTTSEngine):
                 if not wav_path.exists():
                     return False
 
-                min_start_seconds = _parse_speech_marker(proc.stdout)
-                extracted = _extract_speech_channel(wav_path, min_start_seconds)
+                min_start_seconds = mame_audio.parse_speech_marker(proc.stdout)
+                extracted = mame_audio.extract_speech_channel(wav_path, min_start_seconds)
                 if extracted is None:
                     return False
                 chan, sr = extracted
 
-                return _encode_mp3(chan, sr, output_path)
+                return mame_audio.encode_mp3(chan, sr, output_path)
         except Exception:
             return False

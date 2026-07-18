@@ -59,9 +59,10 @@ RUN git clone --depth 1 https://github.com/tornupnegatives/TMS-Express.git /tmp/
     rm -rf /tmp/tms-express
 
 # =============================================================================
-# MAME BUILD STAGE - Scoped Apple IIe build for the Textalker/Echo II Plus
-# automation (providers/textalker.py). Separate stage so unrelated app
-# changes don't invalidate this ~15min build's Docker layer cache.
+# MAME BUILD STAGE - Scoped build covering every real-hardware automation
+# provider (Textalker/Echo II Plus, Votrax Type 'N Talk, Votrax Personal
+# Speech System). Separate stage so unrelated app changes don't invalidate
+# this ~15-20min build's Docker layer cache.
 # =============================================================================
 FROM debian:trixie-slim AS mame-builder
 
@@ -79,9 +80,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN git clone --depth 1 https://github.com/mamedev/mame /mame
 WORKDIR /mame
 
-# Scoped build: only the apple2e driver (pulls in a2bus/echoplus/tms5220
-# and their dependencies automatically) - no Qt debugger, no dev tools.
-RUN make SOURCES=src/mame/apple/apple2e.cpp USE_QTDEBUG=0 REGENIE=1 NOWERROR=1 -j"$(nproc)"
+# Scoped build: only the drivers these providers need (each pulls in its
+# own dependencies - a2bus/echoplus/tms5220, votrax/6802/6850, votrax/z80/
+# i8251/i8255/ay8910 - automatically) - no Qt debugger, no dev tools.
+RUN make SOURCES=src/mame/apple/apple2e.cpp,src/mame/votrax/votrtnt.cpp,src/mame/votrax/votrpss.cpp \
+    USE_QTDEBUG=0 REGENIE=1 NOWERROR=1 -j"$(nproc)"
 
 # =============================================================================
 # RUNTIME STAGE - Final application image

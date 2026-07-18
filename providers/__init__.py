@@ -246,6 +246,8 @@ from .tms5220 import Tms5220Engine
 from .sp0256 import Sp0256Engine
 from .votrax import VotraxEngine
 from .textalker import TextalkerEngine
+from .votrax_tnt import VotraxTypeNTalkEngine
+from .votrax_pss import VotraxPersonalSpeechSystemEngine
 
 __all__ = [
     'TTSProvider',
@@ -263,4 +265,6 @@ __all__ = [
     'Sp0256Engine',
     'VotraxEngine',
     'TextalkerEngine',
+    'VotraxTypeNTalkEngine',
+    'VotraxPersonalSpeechSystemEngine',
 ]
