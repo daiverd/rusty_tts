@@ -11,6 +11,6 @@ CORS_ORIGINS = [
 AUDIO_DIR = "audio_files"
 
 # Windows TTS Service configuration
-WINDOWS_TTS_URL = "http://localhost:5000"
-WINDOWS_TTS_ENABLED = False
+WINDOWS_TTS_URL = "http://windows:5000"
+WINDOWS_TTS_ENABLED = True
 WINDOWS_TTS_TIMEOUT = 30
