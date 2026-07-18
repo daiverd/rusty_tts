@@ -179,4 +179,78 @@ done
 
 cp -n "roms/sc01a.bin" "mame_roms/votrpss/sc01a.bin" 2>/dev/null || true
 
+# --- TI Speak & Spell (TMS5100/TMC0281 chip) vocabulary ROMs, used directly
+#     by native/retrochip's tms5110 core - see providers/snspell.py. Only the
+#     validated two-ROM regions with correct English vocabulary word-list
+#     parsing are fetched (see providers/snspell.py's docstring for why the
+#     single-ROM and Spanish variants are skipped).
+
+fetch_and_extract \
+    "Speak & Spell (US, 1980) ROM 0" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/mess/snspell.7z" \
+    "tmc0351n2l" \
+    "roms/snspell/us" "tmc0351n2l.bin" \
+    "2d03b292"
+
+fetch_and_extract \
+    "Speak & Spell (US, 1980) ROM 1" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/mess/snspell.7z" \
+    "tmc0352n2l" \
+    "roms/snspell/us" "tmc0352n2l.bin" \
+    "a6d56883"
+
+fetch_and_extract \
+    "Speak & Spell (US, 1978) ROM 0" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/mess/snspell.7z" \
+    "tmc0351nl" \
+    "roms/snspell/us_1978" "tmc0351nl.bin" \
+    "beea3373"
+
+fetch_and_extract \
+    "Speak & Spell (US, 1978) ROM 1" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/mess/snspell.7z" \
+    "tmc0352nl" \
+    "roms/snspell/us_1978" "tmc0352nl.bin" \
+    "d51f0587"
+
+fetch_and_extract \
+    "Speak & Spell (UK, 1978) ROM 0" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/mess/snspell.7z" \
+    "cd2303" \
+    "roms/snspell/uk" "cd2303.bin" \
+    "0fae755c"
+
+fetch_and_extract \
+    "Speak & Spell (UK, 1978) ROM 1" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/mess/snspell.7z" \
+    "cd2304" \
+    "roms/snspell/uk" "cd2304.bin" \
+    "e2a270eb"
+
+fetch_and_extract \
+    "Speak & Spell (Japan) ROM 0" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/mess/snspell.7z" \
+    "cd2321" \
+    "roms/snspell/jp" "cd2321.bin" \
+    "ac010cce"
+
+fetch_and_extract \
+    "Speak & Spell (Japan) ROM 1" \
+    "https://archive.org/download/mame-0.272-romset-complete-merged/mess/snspell.7z" \
+    "cd2322" \
+    "roms/snspell/jp" "cd2322.bin" \
+    "b6f4bba4"
+
+# --- TSI/Silicon Systems S14001A (TSI Speech+ talking calculator, 1976),
+#     used directly by native/retrochip's s14001a core - see
+#     providers/s14001a_calculator.py. Direct binary download, not an
+#     archive member, same pattern as the Disk II P6 PROM above.
+
+fetch_and_extract \
+    "TSI Speech+ S14001A mask ROM" \
+    "https://seanriddle.com/tsispeechplusmaskrom.bin" \
+    "tsispeechplusmaskrom.bin" \
+    "roms/tsispeech" "tsispeechplusmaskrom.bin" \
+    "543b46d4"
+
 echo "Done. ROMs are in roms/ and mame_roms/ (both gitignored)."

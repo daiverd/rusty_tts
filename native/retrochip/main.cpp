@@ -16,6 +16,17 @@
 //
 // For votrax: stdin is a stream of phoneme code bytes (0-63, see votrax.h),
 // fed one at a time - each phone's duration is computed from its ROM data.
+//
+// For tms5110: stdin is a stream of 2-byte big-endian VSM word addresses
+// (see tms5110.h) - the real ROMs only span 0x0000-0x7fff, so 16 bits is
+// generous. For each address: load_address(addr); speak(); then samples are
+// generated until the chip stops talking, before moving to the next address.
+//
+// For s14001a: stdin is a stream of single-byte 6-bit word indices (0-63,
+// see s14001a.h) - unlike tms5110's VSM pointers, this chip takes the word
+// number directly. For each byte: write_word_index(b); start(); then
+// samples are generated until the chip stops talking, before moving to the
+// next byte.
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -23,7 +34,9 @@
 #include <string>
 #include <vector>
 
+#include "s14001a.h"
 #include "sp0256.h"
+#include "tms5110.h"
 #include "tms5220.h"
 #include "votrax.h"
 
@@ -169,6 +182,91 @@ int run_votrax(const std::string &rom_path) {
     return 0;
 }
 
+int run_tms5110(const std::string &rom_path) {
+    std::ifstream f(rom_path, std::ios::binary);
+    if (!f) {
+        std::fprintf(stderr, "retrochip: cannot open ROM file '%s'\n", rom_path.c_str());
+        return 2;
+    }
+    std::vector<uint8_t> rom((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+
+    retrochip::Tms5110 chip;
+    chip.set_vocab_rom(rom.data(), rom.size());
+
+    std::vector<uint8_t> input = read_all_stdin();
+
+    const unsigned kChunk = 64;
+    int16_t buf[kChunk];
+
+    // 8kHz sample rate (MASTER_CLOCK/80, see snspell.cpp/tms5110.cpp).
+    const unsigned long kMaxSamplesPerWord = 8000UL * 5;
+
+    for (size_t pos = 0; pos + 1 < input.size(); pos += 2) {
+        uint32_t addr = (static_cast<uint32_t>(input[pos]) << 8) | input[pos + 1];
+        chip.load_address(addr);
+        chip.speak();
+
+        unsigned long samples_this_word = 0;
+        while (chip.talking()) {
+            chip.generate(buf, kChunk);
+            std::fwrite(buf, sizeof(int16_t), kChunk, stdout);
+            samples_this_word += kChunk;
+            if (samples_this_word >= kMaxSamplesPerWord) {
+                std::fprintf(stderr, "retrochip: hit per-word safety cap, moving on\n");
+                break;
+            }
+        }
+    }
+
+    std::fflush(stdout);
+    return 0;
+}
+
+int run_s14001a(const std::string &rom_path) {
+    std::ifstream f(rom_path, std::ios::binary);
+    if (!f) {
+        std::fprintf(stderr, "retrochip: cannot open ROM file '%s'\n", rom_path.c_str());
+        return 2;
+    }
+    std::vector<uint8_t> rom((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+
+    retrochip::S14001a chip;
+    chip.set_rom(rom.data(), rom.size());
+    std::vector<uint8_t> input = read_all_stdin();
+
+    // No MAME driver clocks this chip for the actual TSI Speech+ calculator
+    // (it's not a MAME-supported machine); 20000Hz is the documented clock
+    // for this chip family's other real applications (see wolfpack.cpp's
+    // S14001A instantiation - "likely factory set to 20000hz"). Only
+    // affects pitch/speed, same caveat as sp0256/votrax's rate comments.
+    const unsigned kSampleRate = 20000;
+
+    const unsigned kChunk = 64;
+    int16_t buf[kChunk];
+
+    // Safety cap per word, same rationale as sp0256/votrax.
+    const unsigned long kMaxSamplesPerWord = kSampleRate * 5UL;
+
+    for (uint8_t word : input) {
+        chip.write_word_index(word);
+        chip.start();
+
+        unsigned long samples_this_word = 0;
+        while (chip.talking()) {
+            chip.generate(buf, kChunk);
+            std::fwrite(buf, sizeof(int16_t), kChunk, stdout);
+            samples_this_word += kChunk;
+            if (samples_this_word >= kMaxSamplesPerWord) {
+                std::fprintf(stderr, "retrochip: hit per-word safety cap, moving on\n");
+                break;
+            }
+        }
+    }
+
+    std::fflush(stdout);
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -215,6 +313,22 @@ int main(int argc, char **argv) {
             return 2;
         }
         return run_votrax(rom_path);
+    }
+
+    if (chip == "tms5110") {
+        if (rom_path.empty()) {
+            std::fprintf(stderr, "retrochip: --chip tms5110 requires --rom <path>\n");
+            return 2;
+        }
+        return run_tms5110(rom_path);
+    }
+
+    if (chip == "s14001a") {
+        if (rom_path.empty()) {
+            std::fprintf(stderr, "retrochip: --chip s14001a requires --rom <path>\n");
+            return 2;
+        }
+        return run_s14001a(rom_path);
     }
 
     std::fprintf(stderr, "retrochip: unsupported --chip '%s'\n", chip.c_str());

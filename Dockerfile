@@ -43,7 +43,8 @@ RUN git clone --depth 1 https://github.com/dectalk/dectalk.git /tmp/dectalk && \
 COPY native/retrochip /tmp/retrochip-src
 RUN g++ -Wall -O2 -std=c++17 -o /usr/local/bin/retrochip \
         /tmp/retrochip-src/main.cpp /tmp/retrochip-src/tms5220.cpp \
-        /tmp/retrochip-src/sp0256.cpp /tmp/retrochip-src/votrax.cpp && \
+        /tmp/retrochip-src/sp0256.cpp /tmp/retrochip-src/votrax.cpp \
+        /tmp/retrochip-src/tms5110.cpp /tmp/retrochip-src/s14001a.cpp && \
     rm -rf /tmp/retrochip-src
 
 # Build TMS-Express: WAV -> TMS5220-native LPC-10 frame encoder
