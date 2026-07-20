@@ -233,7 +233,6 @@ def run_tts_pipeline_stdin_raw(tts_cmd: List[str], stdin_data: bytes, output_pat
 
 
 # Import all engine implementations
-from .pollinations import PollinationsEngine
 from .espeak import EspeakEngine
 from .festival import FestivalEngine
 from .flite import FliteEngine
@@ -253,7 +252,6 @@ from .s14001a_calculator import S14001aCalculatorEngine
 __all__ = [
     'TTSProvider',
     'BaseTTSEngine',
-    'PollinationsEngine',
     'EspeakEngine',
     'FestivalEngine',
     'FliteEngine',

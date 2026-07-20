@@ -2,7 +2,7 @@ from typing import Dict, List
 from pathlib import Path
 from providers import (
     TTSProvider, BaseTTSEngine,
-    PollinationsEngine, EspeakEngine, FestivalEngine, FliteEngine,
+    EspeakEngine, FestivalEngine, FliteEngine,
     DECtalkEngine, SAMEngine, CoquiTTSEngine, WindowsEngine,
     Tms5220Engine, Sp0256Engine, VotraxEngine, TextalkerEngine,
     VotraxTypeNTalkEngine, VotraxPersonalSpeechSystemEngine, SnSpellEngine,
@@ -21,7 +21,6 @@ class TTSManager:
     def _initialize_engines(self):
         """Initialize all available TTS engines"""
         engines = {
-            "pollinations": PollinationsEngine(),
             "espeak": EspeakEngine(),
             "festival": FestivalEngine(),
             "flite": FliteEngine(),

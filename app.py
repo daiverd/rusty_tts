@@ -96,14 +96,14 @@ async def list_providers():
 async def text_to_speech(
     request: Request,
     text: str = Query(..., description="Text to convert to speech", min_length=1, max_length=1000),
-    provider: str = Query("pollinations", description="TTS provider to use"),
+    provider: str = Query("espeak", description="TTS provider to use"),
     voice: str = Query(None, description="Voice to use for speech synthesis")
 ):
     """
     Generate or retrieve MP3 audio file from text and return URL
-    
+
     - **text**: The text to convert to speech (required)
-    - **provider**: TTS provider to use (pollinations, espeak, festival, coqui)
+    - **provider**: TTS provider to use (espeak, festival, coqui)
     - **voice**: Voice to use (varies by provider)
     
     Returns JSON with the URL to access the audio file

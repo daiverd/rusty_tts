@@ -35,7 +35,6 @@ Each provider inherits from `BaseTTSEngine` and implements:
 - `is_available() -> bool`
 
 Available providers:
-- **Cloud**: Pollinations (always available)
 - **Local engines**: eSpeak, Festival, Flite, DECtalk, SAM, Coqui TTS
 - **Platform-specific**: Windows TTS (connects to Windows XP Python 2.7 sub-API)
 
@@ -96,7 +95,7 @@ docker-compose up --build
 # Test endpoints
 curl http://localhost:8887/health
 curl http://localhost:8887/providers
-curl "http://localhost:8887/tts?text=Hello+World&provider=pollinations&voice=alloy"
+curl "http://localhost:8887/tts?text=Hello+World&provider=espeak&voice=en"
 
 # Windows integration test
 python test_windows_integration.py

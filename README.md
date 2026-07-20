@@ -14,7 +14,6 @@ A unified FastAPI-based text-to-speech service that supports multiple TTS engine
 ## Supported Providers
 
 The API supports various TTS providers including:
-- Cloud-based services (like Pollinations)
 - Local TTS engines (eSpeak, Festival, Flite, DECtalk, SAM)
 - AI models (Coqui TTS)
 
@@ -32,7 +31,7 @@ The API supports various TTS providers including:
 
 3. Generate speech:
    ```
-   GET /tts?text=Hello+World&provider=pollinations&voice=alloy
+   GET /tts?text=Hello+World&provider=espeak&voice=en
    ```
 
 ## API Endpoints
