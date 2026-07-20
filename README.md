@@ -17,7 +17,6 @@ The API supports various TTS providers including:
 - Cloud-based services (like Pollinations)
 - Local TTS engines (eSpeak, Festival, Flite, DECtalk, SAM)
 - AI models (Coqui TTS)
-- Custom effect engines ((currently broken) LPC-style processing)
 
 ## Quick Start
 

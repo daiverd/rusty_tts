@@ -238,7 +238,6 @@ from .espeak import EspeakEngine
 from .festival import FestivalEngine
 from .flite import FliteEngine
 from .dectalk import DECtalkEngine
-from .lpc import LPCEngine
 from .sam import SAMEngine
 from .coqui import CoquiTTSEngine
 from .windows import WindowsEngine
@@ -259,7 +258,6 @@ __all__ = [
     'FestivalEngine',
     'FliteEngine',
     'DECtalkEngine',
-    'LPCEngine',
     'SAMEngine',
     'CoquiTTSEngine',
     'WindowsEngine',

@@ -38,7 +38,6 @@ Available providers:
 - **Cloud**: Pollinations (always available)
 - **Local engines**: eSpeak, Festival, Flite, DECtalk, SAM, Coqui TTS
 - **Platform-specific**: Windows TTS (connects to Windows XP Python 2.7 sub-API)
-- **Experimental**: LPC-style processing (currently broken)
 
 Engines auto-detect availability on startup; only available providers are exposed via the API.
 
