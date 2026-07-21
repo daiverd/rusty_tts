@@ -35,8 +35,15 @@ Each provider inherits from `BaseTTSEngine` and implements:
 - `is_available() -> bool`
 
 Available providers:
-- **Local engines**: eSpeak, Festival, Flite, DECtalk, SAM, Coqui TTS
+- **Local engines**: eSpeak, Festival, Flite, DECtalk, SAM, Piper, Coqui TTS
 - **Platform-specific**: Windows TTS (connects to Windows XP Python 2.7 sub-API)
+
+Piper and Coqui TTS are both neural engines but handled very differently: Piper
+is fast enough (CPU real-time, ~3s/request) to run in-process like the other
+local engines, with its voice models baked into the main image at build time
+(see Dockerfile). Coqui is much slower (~1s/word of CPU-bound inference) and
+runs as a separate warm sidecar service (see `coqui/`) to avoid paying
+per-request model-load overhead on top of that.
 
 Engines auto-detect availability on startup; only available providers are exposed via the API.
 

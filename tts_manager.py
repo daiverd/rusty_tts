@@ -3,7 +3,7 @@ from pathlib import Path
 from providers import (
     TTSProvider, BaseTTSEngine,
     EspeakEngine, FestivalEngine, FliteEngine,
-    DECtalkEngine, SAMEngine, CoquiTTSEngine, WindowsEngine,
+    DECtalkEngine, SAMEngine, PiperEngine, CoquiTTSEngine, WindowsEngine,
     Tms5220Engine, Sp0256Engine, VotraxEngine, TextalkerEngine,
     VotraxTypeNTalkEngine, VotraxPersonalSpeechSystemEngine, SnSpellEngine,
     S14001aCalculatorEngine
@@ -26,6 +26,7 @@ class TTSManager:
             "flite": FliteEngine(),
             "dectalk": DECtalkEngine(),
             "sam": SAMEngine(),
+            "piper": PiperEngine(),
             "coqui": CoquiTTSEngine(),
             "windows": WindowsEngine(),
             "sp0256": Sp0256Engine(),

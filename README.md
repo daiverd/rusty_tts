@@ -15,7 +15,7 @@ A unified FastAPI-based text-to-speech service that supports multiple TTS engine
 
 The API supports various TTS providers including:
 - Local TTS engines (eSpeak, Festival, Flite, DECtalk, SAM)
-- AI models (Coqui TTS)
+- AI models (Piper, Coqui TTS)
 
 ## Quick Start
 

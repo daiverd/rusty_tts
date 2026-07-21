@@ -238,6 +238,7 @@ from .festival import FestivalEngine
 from .flite import FliteEngine
 from .dectalk import DECtalkEngine
 from .sam import SAMEngine
+from .piper import PiperEngine
 from .coqui import CoquiTTSEngine
 from .windows import WindowsEngine
 from .tms5220 import Tms5220Engine
@@ -257,6 +258,7 @@ __all__ = [
     'FliteEngine',
     'DECtalkEngine',
     'SAMEngine',
+    'PiperEngine',
     'CoquiTTSEngine',
     'WindowsEngine',
     'Tms5220Engine',
