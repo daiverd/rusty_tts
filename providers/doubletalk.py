@@ -61,10 +61,12 @@ def _extract_doubletalk_channel(wav_path: Path) -> Optional[Tuple[array.array, i
 
     # The card's DAC outputs a fixed, deterministic full-scale ~100ms click
     # at power-on, every single capture, well before capture.lua's SEND_AT
-    # delay - it's a hardware/emulation power-on transient, not audio. Since
-    # it's loud, trim_silence()'s "first non-silent window" would otherwise
-    # anchor on the click itself and keep it (plus the real silence between
-    # it and actual speech) in the final clip. Skip past it before trimming.
+    # delay - genuine hardware behavior (the real DoubleTalk card does this
+    # too on power-on, consistent with its DC-coupled bridge-tied output),
+    # not a MAME artifact. Since it's loud, trim_silence()'s "first
+    # non-silent window" would otherwise anchor on the click itself and
+    # keep it (plus the real silence between it and actual speech) in the
+    # final clip. Skip past it before trimming.
     startup_click_samples = int(0.15 * sr)
     chan = chan[startup_click_samples:]
 
