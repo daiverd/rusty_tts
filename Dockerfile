@@ -42,12 +42,17 @@ RUN git clone --depth 1 https://github.com/dectalk/dectalk.git /tmp/dectalk && \
     rm -rf /tmp/dectalk
 
 # Build retrochip: our standalone port of MAME's speech-chip cores
-# (see native/retrochip/, BSD-3-Clause) plus the CLI that drives them
+# (see native/retrochip/, BSD-3-Clause) plus the CLI that drives them.
+# Also build the standalone DoubleTalk PC emulator (vendored MAME 80C188EB
+# core + board wrapper, see native/retrochip/doubletalk/) used by
+# providers/doubletalk.py.
 COPY native/retrochip /tmp/retrochip-src
 RUN g++ -Wall -O2 -std=c++17 -o /usr/local/bin/retrochip \
         /tmp/retrochip-src/main.cpp /tmp/retrochip-src/tms5220.cpp \
         /tmp/retrochip-src/sp0256.cpp /tmp/retrochip-src/votrax.cpp \
         /tmp/retrochip-src/tms5110.cpp /tmp/retrochip-src/s14001a.cpp && \
+    make -C /tmp/retrochip-src/doubletalk -j"$(nproc)" build/dtalk_cli && \
+    cp /tmp/retrochip-src/doubletalk/build/dtalk_cli /usr/local/bin/dtalk_cli && \
     rm -rf /tmp/retrochip-src
 
 # Build TMS-Express: WAV -> TMS5220-native LPC-10 frame encoder
@@ -63,10 +68,12 @@ RUN git clone --depth 1 https://github.com/tornupnegatives/TMS-Express.git /tmp/
     rm -rf /tmp/tms-express
 
 # =============================================================================
-# MAME BUILD STAGE - Scoped build covering every real-hardware automation
-# provider (Textalker/Echo II Plus, Votrax Type 'N Talk, Votrax Personal
-# Speech System, DoubleTalk PC). Separate stage so unrelated app changes
-# don't invalidate this ~15-20min build's Docker layer cache.
+# MAME BUILD STAGE - Scoped build covering the remaining real-hardware
+# automation providers (Textalker/Echo II Plus, Votrax Type 'N Talk, Votrax
+# Personal Speech System). DoubleTalk PC no longer builds through MAME - it
+# uses the standalone emulator from the builder stage (native/retrochip/
+# doubletalk/, built above). Separate stage so unrelated app changes don't
+# invalidate this ~15-20min build's Docker layer cache.
 # =============================================================================
 FROM debian:trixie-slim AS mame-builder
 
@@ -84,23 +91,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN git clone --depth 1 https://github.com/mamedev/mame /mame
 WORKDIR /mame
 
-# DoubleTalk PC card driver (see providers/doubletalk.py): not upstreamed
-# to mamedev/mame, so overlay it here. doubletalkpc.cpp/.h are new files;
-# the CPU core files (i86/i186) carry a real, non-trivial addition (an
-# I80C188EB CPU subtype the firmware needs - see the doubletalk-pc research
-# repo for why) and are overlaid as complete files rather than patched, to
-# stay correct regardless of unrelated upstream drift in those files since
-# our last sync - the only driver in this scoped build that touches the
-# i86/i186 core at all is genpc.cpp itself (pcv20), so this can't silently
-# break an unrelated machine in the same build.
-COPY native/mame-doubletalk/mame-src-overlay/ /mame/
-COPY native/mame-doubletalk/mame-src-overlay.patch /tmp/doubletalkpc.patch
-RUN git apply --verbose /tmp/doubletalkpc.patch && rm /tmp/doubletalkpc.patch
-
 # Scoped build: only the drivers these providers need (each pulls in its
 # own dependencies - a2bus/echoplus/tms5220, votrax/6802/6850, votrax/z80/
-# i8251/i8255/ay8910, genpc/i86/i186 - automatically) - no Qt debugger, no
-# dev tools.
+# i8251/i8255/ay8910 - automatically) - no Qt debugger, no dev tools.
+# (The DoubleTalk MAME overlay that used to be applied here lives on in
+# native/mame-doubletalk/ as the reference implementation the standalone
+# port is validated against - see native/retrochip/doubletalk/.)
 #
 # --mount=type=cache,target=/mame/build persists MAME's object-file/
 # generated-source directory across separate `docker build` invocations,
@@ -116,7 +112,7 @@ RUN git apply --verbose /tmp/doubletalkpc.patch && rm /tmp/doubletalkpc.patch
 # final linked binary (/mame/mame) lands outside build/, so it's unaffected
 # by the mount not persisting into the image layer.
 RUN --mount=type=cache,target=/mame/build \
-    make SOURCES=src/mame/apple/apple2e.cpp,src/mame/votrax/votrtnt.cpp,src/mame/votrax/votrpss.cpp,src/mame/pc/genpc.cpp \
+    make SOURCES=src/mame/apple/apple2e.cpp,src/mame/votrax/votrtnt.cpp,src/mame/votrax/votrpss.cpp \
     USE_QTDEBUG=0 REGENIE=1 NOWERROR=1 -j"$(nproc)"
 
 # =============================================================================
@@ -175,6 +171,7 @@ RUN mkdir -p /opt/applecommander && \
 # Copy compiled TTS engines from builder stage
 COPY --from=builder /usr/local/bin/sam /usr/local/bin/
 COPY --from=builder /usr/local/bin/retrochip /usr/local/bin/
+COPY --from=builder /usr/local/bin/dtalk_cli /usr/local/bin/
 COPY --from=builder /usr/local/bin/tms-express /usr/local/bin/
 COPY --from=builder /opt/dectalk /opt/dectalk
 RUN ln -s /opt/dectalk/say /usr/bin/dectalk && \
