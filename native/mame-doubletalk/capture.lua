@@ -28,6 +28,15 @@
 -- before exiting - cheaper and more accurate than a fixed sleep sized off
 -- input length. DOUBLETALK_WAIT_AFTER (if set) is used only as the hard
 -- timeout fallback, not the primary completion signal.
+--
+-- AUDIO_TAIL was originally 20.0 (copied from the regression script, tuned
+-- conservatively for an unattended one-off test). That's massive overkill
+-- for a per-request latency budget: the buffer-drain point already means
+-- the firmware has consumed all of it into its own synthesis queue, and
+-- measured actual audio always finished within ~1s of drain being detected
+-- (0.8s tail observed on the full Declaration phrase, 210 bytes). 3.0s
+-- keeps a healthy ~3-4x margin over that without paying 20 emulated
+-- seconds (~1.5s wall at typical -nothrottle speed) on every request.
 
 local HOST_CPU_TAG = ":maincpu"
 local CARD_CPU_TAG = ":isa6:doubletalkpc:doubletalkpc_cpu"
@@ -35,7 +44,7 @@ local TTS_PORT = 0x025f
 local RDY_BIT = 0x10
 local SEND_AT = 0.5 -- let the host machine finish its own boot first
 local DRAIN_SETTLE = 1.0
-local AUDIO_TAIL = 20.0
+local AUDIO_TAIL = 3.0
 
 local input_text = os.getenv("DOUBLETALK_INPUT") or "HELLO"
 local timeout_at = tonumber(os.getenv("DOUBLETALK_WAIT_AFTER") or "40") + SEND_AT

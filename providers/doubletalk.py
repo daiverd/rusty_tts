@@ -107,7 +107,11 @@ class DoubleTalkEngine(BaseTTSEngine):
             # buffer pointers equal + settle + audio tail) and exits early -
             # this is just the hard timeout fallback, so it only needs to be
             # generously larger than worst-case synthesis time, not tuned.
-            wait_after = min(90.0, 20.0 + 0.5 * len(sanitized))
+            # ~0.055s/char observed actual speech duration at the 200-char
+            # (sanitize_text's cap) worst case (~11s) - 0.15s/char + a small
+            # base keeps a healthy ~3x margin without inflating every
+            # request's timeout ceiling the way the old 20.0 base did.
+            wait_after = min(40.0, 6.0 + 0.15 * len(sanitized))
             seconds_to_run = int(wait_after) + 15
 
             with tempfile.TemporaryDirectory() as tmpdir:
