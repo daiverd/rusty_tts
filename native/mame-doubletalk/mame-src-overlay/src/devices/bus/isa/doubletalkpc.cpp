@@ -144,16 +144,25 @@ void doubletalkpc_isa_device::pulse_int1()
 
 void doubletalkpc_isa_device::device_add_mconfig(machine_config &config)
 {
-	// A deliberate +10% overclock (stock is 20_MHz_XTAL / 10MHz processor
-	// clock - see the real dtlk-pc driver upstream). The DAC is written
-	// directly by CPU-timer code with no separate audio clock domain, so
-	// this uniformly speeds up both ends of the card's own speech-rate
-	// range (Ctrl+A <0-9> s) by ~10%, at the cost of a matching ~10% pitch
-	// rise (~1.65 semitones) - the same "faster crystal" mod people
-	// actually did to real ISA-era TTS cards, not a departure from how
-	// the hardware works, just from its stock speed. Verified: no
-	// desync/corruption at this margin (see providers/doubletalk.py).
-	I80C188EB(config, m_cpu, XTAL(22'000'000)); // was 20_MHz_XTAL / 10MHz
+	// A deliberate 2x overclock (stock is 20_MHz_XTAL / 10MHz processor
+	// clock - see the real dtlk-pc driver upstream; a prior +10% version
+	// of this experiment is in git history). The DAC is written directly
+	// by CPU-timer code with no separate audio clock domain, so this
+	// uniformly halves both the wall-clock time to synthesize a phrase
+	// AND both ends of the card's own speech-rate range's real-time
+	// duration (Ctrl+A <0-9> s) - verified on real captures (rate 5:
+	// 1.0s -> 0.5s for an identical phrase, no desync/corruption at this
+	// margin). Unlike the +10% version, this is paired with a
+	// compensating fix in providers/doubletalk.py: since MAME's audio
+	// mixer stream rate (48kHz) is fixed independent of CPU clock, the
+	// captured samples encode "audio that happened 2x too fast" - halving
+	// the *declared* sample rate on encode (not resampling, just the
+	// header/metadata) exactly and losslessly undoes both the pitch rise
+	// and the tempo speedup, verified to reproduce the stock-clock
+	// duration/pitch exactly. Net effect: ~2x less real synthesis time
+	// per request, no audible quality trade-off at all (unlike the +10%
+	// version, which did trade off pitch).
+	I80C188EB(config, m_cpu, XTAL(40'000'000)); // was 20_MHz_XTAL / 10MHz
 	m_cpu->set_addrmap(AS_PROGRAM, &doubletalkpc_isa_device::cpu_map);
 	m_cpu->set_addrmap(AS_IO, &doubletalkpc_isa_device::cpu_io);
 

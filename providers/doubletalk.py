@@ -32,6 +32,18 @@ _REQUIRED_ROMS = [
 # "speech" being extracted was actually just the fixed boot beep).
 _DOUBLETALK_CHANNEL = 1
 
+# The vendored driver overclocks the card's CPU 2x (see doubletalkpc.cpp's
+# device_add_mconfig) to roughly halve real per-request synthesis time. MAME's
+# audio mixer stream rate (48kHz) is fixed independent of that CPU clock, so
+# the captured samples encode "audio that happened 2x too fast" - same pitch
+# rise and tempo speedup as a tape recorded at double speed. Halving the
+# *declared* output sample rate below (not resampling - just what we tell the
+# encoder the rate is) exactly and losslessly undoes both, since it's the same
+# transformation in reverse. Verified: reproduces the stock-clock duration and
+# pitch exactly (rate 5, identical phrase: 1.0s at stock 10MHz, 0.5s captured
+# at 2x/20MHz, 1.0s again once declared at half rate).
+_CLOCK_MULTIPLIER = 2.0
+
 
 def _extract_doubletalk_channel(wav_path: Path) -> Optional[Tuple[array.array, int]]:
     with wave.open(str(wav_path), "rb") as w:
@@ -56,11 +68,13 @@ def _extract_doubletalk_channel(wav_path: Path) -> Optional[Tuple[array.array, i
     startup_click_samples = int(0.15 * sr)
     chan = chan[startup_click_samples:]
 
+    # trim_silence() windows against the raw captured sample density (sr),
+    # not the clock-compensated rate below - it's just counting samples.
     bounds = mame_audio.trim_silence(chan, sr)
     if bounds is None:
         return None
     start, end = bounds
-    return chan[start:end], sr
+    return chan[start:end], int(sr / _CLOCK_MULTIPLIER)
 
 
 class DoubleTalkEngine(BaseTTSEngine):
