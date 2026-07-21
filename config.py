@@ -9,6 +9,10 @@ CORS_ORIGINS = [
 
 # Audio configuration
 AUDIO_DIR = "audio_files"
+# Cached MP3s older than this are swept on a periodic background pass (see
+# app.py's cleanup task) - the cache has no size cap, only an age one.
+AUDIO_CACHE_MAX_AGE_DAYS = 30
+AUDIO_CACHE_CLEANUP_INTERVAL_SECONDS = 3600
 
 # Windows TTS Service configuration
 WINDOWS_TTS_URL = "http://windows:5000"

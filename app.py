@@ -1,12 +1,59 @@
-from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import Response
-from fastapi.middleware.cors import CORSMiddleware
+import asyncio
 import hashlib
+import logging
+import time
+from contextlib import asynccontextmanager
 from pathlib import Path
-from tts_manager import TTSManager
-from config import CORS_ORIGINS, AUDIO_DIR
 
-app = FastAPI(title="Text-to-Speech API", description="Generate MP3 audio from text using multiple providers")
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+from tts_manager import TTSManager
+from config import (
+    CORS_ORIGINS, AUDIO_DIR,
+    AUDIO_CACHE_MAX_AGE_DAYS, AUDIO_CACHE_CLEANUP_INTERVAL_SECONDS,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def _sweep_expired_audio_files():
+    """Delete cached MP3s older than AUDIO_CACHE_MAX_AGE_DAYS. The cache in
+    create_audio_file() never expires entries on its own - without this,
+    audio_files/ (and the O(n) glob() in /files) grows without bound."""
+    cutoff = time.time() - AUDIO_CACHE_MAX_AGE_DAYS * 86400
+    removed = 0
+    for path in audio_dir.glob("*.mp3"):
+        try:
+            if path.stat().st_mtime < cutoff:
+                path.unlink()
+                removed += 1
+        except FileNotFoundError:
+            pass
+    if removed:
+        logger.info(f"Audio cache sweep: removed {removed} file(s) older than {AUDIO_CACHE_MAX_AGE_DAYS} days")
+
+
+async def _audio_cache_cleanup_loop():
+    while True:
+        await asyncio.sleep(AUDIO_CACHE_CLEANUP_INTERVAL_SECONDS)
+        await asyncio.to_thread(_sweep_expired_audio_files)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await asyncio.to_thread(_sweep_expired_audio_files)
+    cleanup_task = asyncio.create_task(_audio_cache_cleanup_loop())
+    yield
+    cleanup_task.cancel()
+
+
+app = FastAPI(
+    title="Text-to-Speech API",
+    description="Generate MP3 audio from text using multiple providers",
+    lifespan=lifespan,
+)
 
 # Configure CORS
 app.add_middleware(
@@ -29,7 +76,12 @@ tts_manager = TTSManager()
 def generate_filename(text: str, provider: str, voice: str) -> str:
     """Generate a unique filename based on text, provider, and voice"""
     content = f"{text}_{provider}_{voice}"
-    hash_object = hashlib.md5(content.encode())
+    # blake2b instead of md5: same stdlib, no extra dependency, faster and
+    # not flagged by security scanners that blanket-flag md5 - though at
+    # these input sizes (a few hundred bytes) the hash itself was never
+    # measurable against actual synthesis time; this is a free swap, not a
+    # perf fix.
+    hash_object = hashlib.blake2b(content.encode(), digest_size=16)
     return f"{hash_object.hexdigest()}.mp3"
 
 async def create_audio_file(text: str, provider: str, voice: str) -> str:
@@ -97,7 +149,8 @@ async def text_to_speech(
     request: Request,
     text: str = Query(..., description="Text to convert to speech", min_length=1, max_length=1000),
     provider: str = Query("espeak", description="TTS provider to use"),
-    voice: str = Query(None, description="Voice to use for speech synthesis")
+    voice: str = Query(None, description="Voice to use for speech synthesis"),
+    stream: bool = Query(False, description="Return the MP3 bytes directly instead of a JSON URL, avoiding a second /play round trip")
 ):
     """
     Generate or retrieve MP3 audio file from text and return URL
@@ -105,8 +158,11 @@ async def text_to_speech(
     - **text**: The text to convert to speech (required)
     - **provider**: TTS provider to use (espeak, festival, coqui)
     - **voice**: Voice to use (varies by provider)
-    
-    Returns JSON with the URL to access the audio file
+    - **stream**: If true, respond with the MP3 audio directly (audio/mpeg)
+      instead of a JSON URL pointer - saves a second request to /play for
+      callers that just want the audio.
+
+    Returns JSON with the URL to access the audio file (or raw MP3 audio if stream=true)
     """
     # Check if provider is available
     if provider not in tts_manager.get_available_providers():
@@ -132,9 +188,17 @@ async def text_to_speech(
     
     try:
         filename = await create_audio_file(text, provider, voice)
+
+        if stream:
+            return FileResponse(
+                audio_dir / filename,
+                media_type="audio/mpeg",
+                headers={"Cache-Control": "public, max-age=3600"},
+            )
+
         base_url = get_base_url(request)
         audio_url = f"{base_url}/play/{filename}"
-        
+
         return {
             "success": True,
             "message": "Audio generated successfully",
@@ -158,24 +222,19 @@ async def text_to_speech(
 async def play_audio_file(filename: str):
     """Stream a specific audio file for inline playback"""
     filepath = audio_dir / filename
-    
+
     if not filepath.exists() or not filepath.name.endswith('.mp3'):
         raise HTTPException(status_code=404, detail="Audio file not found")
-    
-    with open(filepath, 'rb') as f:
-        content = f.read()
-    
-    headers = {
-        "Accept-Ranges": "bytes",
-        "Content-Length": str(len(content)),
-        "Cache-Control": "public, max-age=3600",
-        "Content-Disposition": "inline"
-    }
-    
-    return Response(
-        content=content,
-        media_type="audio/mpeg", 
-        headers=headers
+
+    # FileResponse streams off a thread instead of the blocking read()
+    # this used to do inline on the event loop.
+    return FileResponse(
+        filepath,
+        media_type="audio/mpeg",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "Content-Disposition": "inline"
+        }
     )
 
 @app.get("/files")
