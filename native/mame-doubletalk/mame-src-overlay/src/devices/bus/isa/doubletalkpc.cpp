@@ -144,7 +144,16 @@ void doubletalkpc_isa_device::pulse_int1()
 
 void doubletalkpc_isa_device::device_add_mconfig(machine_config &config)
 {
-	I80C188EB(config, m_cpu, 20_MHz_XTAL); // 10 MHz processor clock
+	// A deliberate +10% overclock (stock is 20_MHz_XTAL / 10MHz processor
+	// clock - see the real dtlk-pc driver upstream). The DAC is written
+	// directly by CPU-timer code with no separate audio clock domain, so
+	// this uniformly speeds up both ends of the card's own speech-rate
+	// range (Ctrl+A <0-9> s) by ~10%, at the cost of a matching ~10% pitch
+	// rise (~1.65 semitones) - the same "faster crystal" mod people
+	// actually did to real ISA-era TTS cards, not a departure from how
+	// the hardware works, just from its stock speed. Verified: no
+	// desync/corruption at this margin (see providers/doubletalk.py).
+	I80C188EB(config, m_cpu, XTAL(22'000'000)); // was 20_MHz_XTAL / 10MHz
 	m_cpu->set_addrmap(AS_PROGRAM, &doubletalkpc_isa_device::cpu_map);
 	m_cpu->set_addrmap(AS_IO, &doubletalkpc_isa_device::cpu_io);
 
