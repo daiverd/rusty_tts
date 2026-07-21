@@ -80,10 +80,10 @@ def normalize_pcm(pcm: bytes, target_dbfs: float = -20.0, max_gain_db: float = 1
 
 
 def encode_pcm_to_mp3(pcm: bytes, sample_rate: int, channels: int, output_path: Path,
-                       normalize: bool = False) -> bool:
+                       normalize: bool = False, target_dbfs: float = -20.0) -> bool:
     try:
         if normalize:
-            pcm = normalize_pcm(pcm)
+            pcm = normalize_pcm(pcm, target_dbfs=target_dbfs)
 
         encoder = lameenc.Encoder()
         encoder.set_in_sample_rate(sample_rate)

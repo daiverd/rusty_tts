@@ -99,5 +99,5 @@ def parse_speech_marker(mame_stdout: bytes) -> float:
     return float(match.group(1)) if match else 0.0
 
 
-def encode_mp3(chan: array.array, sr: int, output_path: Path) -> bool:
-    return encode_pcm_to_mp3(chan.tobytes(), sr, 1, output_path, normalize=True)
+def encode_mp3(chan: array.array, sr: int, output_path: Path, target_dbfs: float = -20.0) -> bool:
+    return encode_pcm_to_mp3(chan.tobytes(), sr, 1, output_path, normalize=True, target_dbfs=target_dbfs)

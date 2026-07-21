@@ -141,6 +141,11 @@ class DoubleTalkEngine(BaseTTSEngine):
                     return False
                 chan, sr = extracted
 
-                return mame_audio.encode_mp3(chan, sr, output_path)
+                # A bit louder than the -20dBFS default other MAME-backed
+                # providers use here: DoubleTalk's captured audio measured
+                # noticeably quieter than DECtalk's at that target (-20.0
+                # mean/-1.9 peak dB vs DECtalk's -17.7/-0.4). normalize_pcm
+                # already peak-limits, so this stays safely under 0dBFS.
+                return mame_audio.encode_mp3(chan, sr, output_path, target_dbfs=-18.5)
         except Exception:
             return False
