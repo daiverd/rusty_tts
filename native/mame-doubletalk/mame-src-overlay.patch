@@ -1,0 +1,33 @@
+diff --git a/scripts/src/bus.lua b/scripts/src/bus.lua
+index 1bf52beb..321822ec 100644
+--- a/scripts/src/bus.lua
++++ b/scripts/src/bus.lua
+@@ -2860,6 +2860,8 @@ if BUSES["ISA"] then
+ 		MAME_DIR .. "src/devices/bus/isa/dcb.h",
+ 		MAME_DIR .. "src/devices/bus/isa/dectalk.cpp",
+ 		MAME_DIR .. "src/devices/bus/isa/dectalk.h",
++		MAME_DIR .. "src/devices/bus/isa/doubletalkpc.cpp",
++		MAME_DIR .. "src/devices/bus/isa/doubletalkpc.h",
+ 		MAME_DIR .. "src/devices/bus/isa/dsi32.cpp",
+ 		MAME_DIR .. "src/devices/bus/isa/dsi32.h",
+ 		MAME_DIR .. "src/devices/bus/isa/ega.cpp",
+diff --git a/src/devices/bus/isa/isa_cards.cpp b/src/devices/bus/isa/isa_cards.cpp
+index 43f91478..52076991 100644
+--- a/src/devices/bus/isa/isa_cards.cpp
++++ b/src/devices/bus/isa/isa_cards.cpp
+@@ -71,6 +71,7 @@
+ // sound
+ #include "adlib.h"
+ #include "dectalk.h"
++#include "doubletalkpc.h"
+ #include "gblaster.h"
+ #include "gus.h"
+ #include "ibm_mfc.h"
+@@ -161,6 +162,7 @@ void pc_isa8_cards(device_slot_interface &device)
+ 	device.option_add("ibm_mfc", ISA8_IBM_MFC);
+ 	device.option_add("wd1002a_wx1", ISA8_WD1002A_WX1);
+ 	device.option_add("dectalk", ISA8_DECTALK);
++	device.option_add("doubletalkpc", ISA8_DOUBLETALKPC);
+ 	device.option_add("prose4k1", ISA8_PROSE4001);
+ 	device.option_add("pds", ISA8_PDS);
+ 	device.option_add("lba_enhancer", ISA8_LBA_ENHANCER);

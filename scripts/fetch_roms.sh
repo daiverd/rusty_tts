@@ -6,23 +6,25 @@
 # Disk II system ROMs and the real Textalker driver disk image needed for
 # the MAME-based Echo II Plus automation (see providers/textalker.py), plus
 # the firmware ROMs for the Votrax Type 'N Talk and Personal Speech System
-# machine automations (see providers/votrax_tnt.py, votrax_pss.py), into a
-# gitignored mame_roms/ directory.
+# machine automations (see providers/votrax_tnt.py, votrax_pss.py), and the
+# RC Systems DoubleTalk PC firmware plus its GLaBIOS boot ROM (see
+# providers/doubletalk.py), into a gitignored mame_roms/ directory.
 #
 # These files are NOT redistributed by this repo or baked into the Docker
 # image - they're proprietary silicon-vendor/publisher data (GI/Votrax/TI/
-# Apple/Street Electronics) with no license grant from this project. This
-# script's sources are MAME ROM-set collections and platform BIOS packs
-# already hosted on the public Internet Archive, plus one long-standing
-# Apple II preservation mirror for a single PROM not present in that
-# collection under an obvious name. Run it yourself, once, on a machine
-# you control.
+# Apple/Street Electronics/RC Systems) with no license grant from this
+# project (GLaBIOS is the one exception - open-source, GPL3). This script's
+# sources are MAME ROM-set collections and platform BIOS packs already
+# hosted on the public Internet Archive, plus one long-standing Apple II
+# preservation mirror for a single PROM not present in that collection
+# under an obvious name. Run it yourself, once, on a machine you control.
 #
 # Usage: scripts/fetch_roms.sh
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-mkdir -p roms mame_roms/apple2ee mame_roms/disks mame_roms/votrtnt mame_roms/votrpss
+mkdir -p roms mame_roms/apple2ee mame_roms/disks mame_roms/votrtnt mame_roms/votrpss \
+    mame_roms/doubletalkpc_isa mame_roms/pcv20
 
 need() {
     command -v "$1" >/dev/null 2>&1 || { echo "fetch_roms.sh: '$1' is required (apt install $2)" >&2; exit 1; }
@@ -178,6 +180,29 @@ do
 done
 
 cp -n "roms/sc01a.bin" "mame_roms/votrpss/sc01a.bin" 2>/dev/null || true
+
+# --- RC Systems DoubleTalk PC (ISA text-to-speech card, 1990s) - see
+#     providers/doubletalk.py. Firmware ROM is the archive.org dump used
+#     throughout the doubletalk-pc/mame-doubletalk research repos (not
+#     mirrored in a MAME romset collection like the chips above, since
+#     DoubleTalk PC support isn't upstreamed to mamedev/mame - see
+#     native/mame-doubletalk/). GLaBIOS is an open-source (GPL3) XT-clone
+#     BIOS used as the host machine's boot ROM instead of the real
+#     (copyrighted) IBM PC BIOS - see https://github.com/640-KB/GLaBIOS.
+
+fetch_and_extract \
+    "DoubleTalk PC firmware" \
+    "https://archive.org/download/doubletalkpc/doubletalkpc.BIN" \
+    "doubletalkpc.BIN" \
+    "mame_roms/doubletalkpc_isa" "doubletalkpc.bin" \
+    "66685631"
+
+fetch_and_extract \
+    "GLaBIOS 0.2.4 (pcv20 boot ROM)" \
+    "https://github.com/640-KB/GLaBIOS/releases/download/v0.2.4/GLABIOS_0.2.4_VT.ROM" \
+    "GLABIOS_0.2.4_VT.ROM" \
+    "mame_roms/pcv20" "glabios_0.2.4_vt.rom" \
+    "7c173fe3"
 
 # --- TI Speak & Spell (TMS5100/TMC0281 chip) vocabulary ROMs, used directly
 #     by native/retrochip's tms5110 core - see providers/snspell.py. Only the

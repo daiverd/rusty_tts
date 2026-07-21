@@ -62,8 +62,8 @@ RUN git clone --depth 1 https://github.com/tornupnegatives/TMS-Express.git /tmp/
 # =============================================================================
 # MAME BUILD STAGE - Scoped build covering every real-hardware automation
 # provider (Textalker/Echo II Plus, Votrax Type 'N Talk, Votrax Personal
-# Speech System). Separate stage so unrelated app changes don't invalidate
-# this ~15-20min build's Docker layer cache.
+# Speech System, DoubleTalk PC). Separate stage so unrelated app changes
+# don't invalidate this ~15-20min build's Docker layer cache.
 # =============================================================================
 FROM debian:trixie-slim AS mame-builder
 
@@ -81,10 +81,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN git clone --depth 1 https://github.com/mamedev/mame /mame
 WORKDIR /mame
 
+# DoubleTalk PC card driver (see providers/doubletalk.py): not upstreamed
+# to mamedev/mame, so overlay it here. doubletalkpc.cpp/.h are new files;
+# the CPU core files (i86/i186) carry a real, non-trivial addition (an
+# I80C188EB CPU subtype the firmware needs - see the doubletalk-pc research
+# repo for why) and are overlaid as complete files rather than patched, to
+# stay correct regardless of unrelated upstream drift in those files since
+# our last sync - the only driver in this scoped build that touches the
+# i86/i186 core at all is genpc.cpp itself (pcv20), so this can't silently
+# break an unrelated machine in the same build.
+COPY native/mame-doubletalk/mame-src-overlay/ /mame/
+COPY native/mame-doubletalk/mame-src-overlay.patch /tmp/doubletalkpc.patch
+RUN git apply --verbose /tmp/doubletalkpc.patch && rm /tmp/doubletalkpc.patch
+
 # Scoped build: only the drivers these providers need (each pulls in its
 # own dependencies - a2bus/echoplus/tms5220, votrax/6802/6850, votrax/z80/
-# i8251/i8255/ay8910 - automatically) - no Qt debugger, no dev tools.
-RUN make SOURCES=src/mame/apple/apple2e.cpp,src/mame/votrax/votrtnt.cpp,src/mame/votrax/votrpss.cpp \
+# i8251/i8255/ay8910, genpc/i86/i186 - automatically) - no Qt debugger, no
+# dev tools.
+RUN make SOURCES=src/mame/apple/apple2e.cpp,src/mame/votrax/votrtnt.cpp,src/mame/votrax/votrpss.cpp,src/mame/pc/genpc.cpp \
     USE_QTDEBUG=0 REGENIE=1 NOWERROR=1 -j"$(nproc)"
 
 # =============================================================================

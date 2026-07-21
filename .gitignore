@@ -200,3 +200,7 @@ cython_debug/
 # Textalker/Echo II Plus automation (see docker-compose.yml mount). Not
 # redistributable - sourced manually, see conversation/notes for provenance.
 /mame_roms/
+
+# MAME auto-generates this config dir whenever run from the repo root
+# (e.g. manual bare-metal debugging of the DoubleTalk PC driver).
+/cfg/
