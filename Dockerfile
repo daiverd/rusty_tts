@@ -99,8 +99,6 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     # Core utilities
     curl \
-    # Audio processing
-    ffmpeg \
     # eSpeak-ng TTS engine
     espeak-ng \
     espeak-ng-data \
@@ -116,11 +114,17 @@ RUN apt-get update && apt-get install -y \
     libsndfile1 \
     libportaudio2 \
     libportaudiocpp0 \
-    # Runtime libs for the vendored MAME binary (Textalker automation)
+    # Runtime libs for the vendored MAME binary (Textalker automation).
+    # libgl1 is a real, direct dependency of MAME's SDL2 build (it dlopens
+    # libGL even with -video none) - it used to come along for free as a
+    # transitive dependency of ffmpeg before ffmpeg was removed in favor of
+    # in-process MP3 encoding (see providers/mp3_encoder.py), so it has to
+    # be listed explicitly now.
     libsdl2-2.0-0 \
     libsdl2-ttf-2.0-0 \
     libfontconfig1 \
     libasound2 \
+    libgl1 \
     # JRE for AppleCommander (writes the per-request HELLO program onto
     # the Textalker disk image - Textalker automation)
     default-jre-headless && \

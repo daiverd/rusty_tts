@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import subprocess
 
+from .mp3_encoder import encode_pcm_to_mp3, encode_wav_to_mp3
+
 @dataclass
 class TTSProvider:
     """Configuration for a TTS provider"""
@@ -34,145 +36,98 @@ class BaseTTSEngine(ABC):
         pass
 
 
-def get_adaptive_mp3_settings(input_format: str = "wav") -> List[str]:
-    """
-    Get adaptive MP3 encoding settings that let FFmpeg analyze and optimize based on input
-    
-    Args:
-        input_format: Input audio format
-    
-    Returns:
-        List of FFmpeg arguments for adaptive MP3 encoding
-    """
-    return [
-        "-acodec", "mp3",
-        "-q:a", "2",           # Variable bitrate, high quality (0=best, 9=worst)
-        "-compression_level", "2",  # Best compression efficiency
-        "-joint_stereo", "1",  # Enable joint stereo for stereo inputs (ignored for mono)
-        "-ac", "1",            # Force mono output (TTS is typically mono)
-        # Let FFmpeg choose optimal sample rate based on input content
-        # No explicit -ar flag means FFmpeg will analyze and choose the best rate
-    ]
-
-
 def run_tts_pipeline(tts_cmd: List[str], output_path: Path, input_format: str = "wav") -> bool:
     """
-    Run TTS command and pipe output through FFmpeg to create MP3
-    
+    Run a TTS command that writes a WAV file to stdout, and encode it to MP3
+    in-process (no ffmpeg subprocess - see mp3_encoder.py).
+
     Args:
         tts_cmd: Command to run TTS engine
         output_path: Path where MP3 file should be saved
-        input_format: Audio format from TTS engine (default: wav)
-    
+        input_format: Audio format from TTS engine (only "wav" is supported)
+
     Returns:
         True if successful, False otherwise
     """
     try:
-        # Get adaptive settings that let FFmpeg analyze the input
-        mp3_settings = get_adaptive_mp3_settings(input_format)
-        
-        ffmpeg_cmd = [
-            "ffmpeg",
-            "-f", input_format,
-            "-i", "pipe:0",
-            *mp3_settings,
-            str(output_path),
-            "-y"
-        ]
-        
-        # Create processes with pipes
-        tts_process = subprocess.Popen(
-            tts_cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        
-        ffmpeg_process = subprocess.Popen(
-            ffmpeg_cmd,
-            stdin=tts_process.stdout,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        
-        # Close TTS stdout in parent to allow proper cleanup
-        tts_process.stdout.close()
-        
-        # Wait for both processes to complete
-        ffmpeg_output, ffmpeg_error = ffmpeg_process.communicate()
-        tts_process.wait()
-        
-        return ffmpeg_process.returncode == 0 and output_path.exists()
-        
+        tts_process = subprocess.run(tts_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if not tts_process.stdout:
+            return False
+
+        return encode_wav_to_mp3(tts_process.stdout, output_path)
+
     except Exception:
         return False
 
 
 def run_tts_pipeline_with_stdin(tts_cmd: List[str], stdin_data: str, output_path: Path, input_format: str = "wav") -> bool:
     """
-    Run TTS command with stdin input and pipe output through FFmpeg to create MP3
-    
+    Run a TTS command that reads text from stdin and writes a WAV file to
+    stdout, and encode it to MP3 in-process (no ffmpeg subprocess).
+
     Args:
         tts_cmd: Command to run TTS engine
         stdin_data: Data to send to TTS engine via stdin
         output_path: Path where MP3 file should be saved
-        input_format: Audio format from TTS engine (default: wav)
-    
+        input_format: Audio format from TTS engine (only "wav" is supported)
+
     Returns:
         True if successful, False otherwise
     """
     try:
-        # Get adaptive settings that let FFmpeg analyze the input
-        mp3_settings = get_adaptive_mp3_settings(input_format)
-        
-        ffmpeg_cmd = [
-            "ffmpeg",
-            "-f", input_format,
-            "-i", "pipe:0",
-            *mp3_settings,
-            str(output_path),
-            "-y"
-        ]
-        
-        # Create processes with pipes
-        tts_process = subprocess.Popen(
+        tts_process = subprocess.run(
             tts_cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        
-        ffmpeg_process = subprocess.Popen(
-            ffmpeg_cmd,
-            stdin=tts_process.stdout,
+            input=stdin_data.encode(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
-        
-        # Send data to TTS and close stdin
-        tts_process.stdin.write(stdin_data)
-        tts_process.stdin.close()
-        tts_process.stdout.close()
-        
-        # Wait for completion
-        ffmpeg_output, ffmpeg_error = ffmpeg_process.communicate()
-        tts_process.wait()
-        
-        return ffmpeg_process.returncode == 0 and output_path.exists()
-        
+        if not tts_process.stdout:
+            return False
+
+        return encode_wav_to_mp3(tts_process.stdout, output_path)
+
     except Exception:
         return False
+
+
+def run_tts_pipeline_raw(tts_cmd: List[str], output_path: Path,
+                          sample_rate: int, channels: int = 1) -> bool:
+    """
+    Run a TTS command that writes raw PCM (s16le) to stdout, and encode it
+    to MP3 in-process. Needed by engines (like DECtalk) whose output has no
+    self-describing container, so the sample rate/channels must be passed
+    explicitly instead of read off a WAV header.
+
+    Args:
+        tts_cmd: Command to run TTS engine
+        output_path: Path where MP3 file should be saved
+        sample_rate: Sample rate of the raw PCM the tts_cmd emits
+        channels: Channel count of the raw PCM the tts_cmd emits
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        tts_process = subprocess.run(tts_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if not tts_process.stdout:
+            return False
+
+        return encode_pcm_to_mp3(tts_process.stdout, sample_rate, channels, output_path)
+
+    except Exception:
+        return False
+
 
 def run_tts_pipeline_stdin_raw(tts_cmd: List[str], stdin_data: bytes, output_path: Path,
                                 sample_rate: int, channels: int = 1) -> bool:
     """
     Run a TTS command that reads a raw byte stream from stdin and writes raw
-    PCM (s16le) to stdout, then pipe that through FFmpeg to create MP3.
+    PCM (s16le) to stdout, and encode it to MP3 in-process.
 
-    This is the combination `run_tts_pipeline_with_stdin` and `run_tts_pipeline`
-    don't cover: stdin input (like Festival's script) *and* raw PCM output with
-    explicit sample rate/channels (like DECtalk's manual ffmpeg args), needed by
-    the retrochip speech-chip emulator CLI.
+    This is the combination `run_tts_pipeline_with_stdin` and
+    `run_tts_pipeline_raw` don't cover: stdin input (like allophone codes or
+    LPC frame bytes, not text) *and* raw PCM output with explicit sample
+    rate/channels, needed by the retrochip speech-chip emulator CLI.
 
     Args:
         tts_cmd: Command to run TTS engine
@@ -186,47 +141,21 @@ def run_tts_pipeline_stdin_raw(tts_cmd: List[str], stdin_data: bytes, output_pat
         True if successful, False otherwise
     """
     try:
-        mp3_settings = get_adaptive_mp3_settings("s16le")
-
-        ffmpeg_cmd = [
-            "ffmpeg",
-            "-f", "s16le",
-            "-ar", str(sample_rate),
-            "-ac", str(channels),
-            "-i", "pipe:0",
-            # Chip-emulator/LPC-frame output loudness varies a lot depending
-            # on the source voice's own gain analysis (an upstream LPC
-            # encoder's relative gain normalization can land much quieter
-            # for some source voices than others) - apply integrated-loudness
-            # normalization here so every voice on this path is audible.
-            "-af", "loudnorm=I=-14:TP=-1:LRA=11",
-            *mp3_settings,
-            str(output_path),
-            "-y"
-        ]
-
-        tts_process = subprocess.Popen(
+        tts_process = subprocess.run(
             tts_cmd,
-            stdin=subprocess.PIPE,
+            input=stdin_data,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
+        if not tts_process.stdout:
+            return False
 
-        ffmpeg_process = subprocess.Popen(
-            ffmpeg_cmd,
-            stdin=tts_process.stdout,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-
-        tts_process.stdin.write(stdin_data)
-        tts_process.stdin.close()
-        tts_process.stdout.close()
-
-        ffmpeg_output, ffmpeg_error = ffmpeg_process.communicate()
-        tts_process.wait()
-
-        return ffmpeg_process.returncode == 0 and output_path.exists()
+        # Chip-emulator/LPC-frame output loudness varies a lot depending on
+        # the source voice's own gain analysis (an upstream LPC encoder's
+        # relative gain normalization can land much quieter for some source
+        # voices than others) - normalize so every voice on this path is
+        # audible.
+        return encode_pcm_to_mp3(tts_process.stdout, sample_rate, channels, output_path, normalize=True)
 
     except Exception:
         return False

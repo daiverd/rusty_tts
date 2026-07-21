@@ -35,7 +35,6 @@ class Sp0256Engine(BaseTTSEngine):
         try:
             subprocess.run(["retrochip", "--chip", "sp0256", "--rom", str(_ROM_PATH)],
                             input=b"", capture_output=True)
-            subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
             get_g2p()
             return True
         except Exception:

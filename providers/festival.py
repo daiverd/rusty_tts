@@ -11,9 +11,7 @@ class FestivalEngine(BaseTTSEngine):
     
     def is_available(self) -> bool:
         try:
-            subprocess.run(["festival", "--version"], 
-                         capture_output=True, check=True)
-            subprocess.run(["ffmpeg", "-version"], 
+            subprocess.run(["festival", "--version"],
                          capture_output=True, check=True)
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):

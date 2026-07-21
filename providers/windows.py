@@ -5,14 +5,12 @@ Simple proxy that forwards requests to Windows TTS service
 
 import requests
 import base64
-import subprocess
-import tempfile
-import os
 import logging
 
 # Set up logging
 logger = logging.getLogger(__name__)
 from . import BaseTTSEngine
+from .mp3_encoder import encode_pcm_to_mp3, encode_wav_to_mp3
 
 
 class WindowsEngine(BaseTTSEngine):
@@ -107,66 +105,20 @@ class WindowsEngine(BaseTTSEngine):
             return False
     
     def _convert_raw_pcm_to_mp3(self, pcm_data, output_file, sample_rate, bit_depth, channels):
-        """Convert raw PCM data to MP3 using FFmpeg"""
+        """Convert raw PCM data to MP3 in-process"""
+        if bit_depth != 16:
+            logger.error(f"Unsupported PCM bit depth from Windows service: {bit_depth}")
+            return False
         try:
-            cmd = [
-                'ffmpeg', '-y',
-                '-f', f's{bit_depth}le',  # signed little endian format
-                '-ar', str(sample_rate),   # sample rate
-                '-ac', str(channels),      # audio channels
-                '-i', 'pipe:0',            # input from stdin
-                '-c:a', 'libmp3lame',      # MP3 encoder
-                '-b:a', '128k',            # bitrate
-                '-q:a', '2',               # quality
-                output_file
-            ]
-            
-            process = subprocess.Popen(
-                cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            
-            _stdout, stderr = process.communicate(input=pcm_data)
-            
-            if process.returncode == 0:
-                return True
-            else:
-                logger.error(f"FFmpeg PCM conversion error: {stderr.decode()}")
-                return False
-                
+            return encode_pcm_to_mp3(pcm_data, sample_rate, channels, output_file)
         except Exception as e:
             logger.error(f"PCM to MP3 conversion error: {e}")
             return False
-    
+
     def _convert_wav_to_mp3(self, wav_data, output_file):
-        """Convert WAV data to MP3 using FFmpeg"""
+        """Convert WAV data to MP3 in-process"""
         try:
-            cmd = [
-                'ffmpeg', '-y',
-                '-i', 'pipe:0',       # input from stdin
-                '-c:a', 'libmp3lame', # MP3 encoder
-                '-b:a', '128k',       # bitrate
-                '-q:a', '2',          # quality
-                output_file
-            ]
-            
-            process = subprocess.Popen(
-                cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            
-            _stdout, stderr = process.communicate(input=wav_data)
-            
-            if process.returncode == 0:
-                return True
-            else:
-                logger.error(f"FFmpeg WAV conversion error: {stderr.decode()}")
-                return False
-                
+            return encode_wav_to_mp3(wav_data, output_file)
         except Exception as e:
             logger.error(f"WAV to MP3 conversion error: {e}")
             return False

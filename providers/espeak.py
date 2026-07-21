@@ -12,9 +12,7 @@ class EspeakEngine(BaseTTSEngine):
     
     def is_available(self) -> bool:
         try:
-            subprocess.run(["espeak-ng", "--version"], 
-                         capture_output=True, check=True)
-            subprocess.run(["ffmpeg", "-version"], 
+            subprocess.run(["espeak-ng", "--version"],
                          capture_output=True, check=True)
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):

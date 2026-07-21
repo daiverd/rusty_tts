@@ -6,13 +6,13 @@ the neural TTS models warm in memory (see coqui/service.py).
 
 import base64
 import logging
-import subprocess
 from pathlib import Path
 from typing import List
 
 import requests
 
 from . import BaseTTSEngine
+from .mp3_encoder import encode_wav_to_mp3
 
 logger = logging.getLogger(__name__)
 
@@ -62,42 +62,11 @@ class CoquiTTSEngine(BaseTTSEngine):
                 data = response.json()
                 if data.get("success"):
                     wav_data = base64.b64decode(data["audio_data"])
-                    return self._convert_wav_to_mp3(wav_data, str(output_path))
+                    return encode_wav_to_mp3(wav_data, str(output_path))
 
             logger.error(f"Coqui service returned error: {response.status_code} {response.text}")
             return False
 
         except Exception as e:
             logger.error(f"Coqui TTS synthesis error: {e}")
-            return False
-
-    def _convert_wav_to_mp3(self, wav_data: bytes, output_file: str) -> bool:
-        """Convert WAV data to MP3 using FFmpeg"""
-        try:
-            cmd = [
-                "ffmpeg", "-y",
-                "-i", "pipe:0",
-                "-c:a", "libmp3lame",
-                "-b:a", "128k",
-                "-q:a", "2",
-                output_file
-            ]
-
-            process = subprocess.Popen(
-                cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-
-            _stdout, stderr = process.communicate(input=wav_data)
-
-            if process.returncode == 0:
-                return True
-            else:
-                logger.error(f"FFmpeg WAV conversion error: {stderr.decode()}")
-                return False
-
-        except Exception as e:
-            logger.error(f"WAV to MP3 conversion error: {e}")
             return False

@@ -6,10 +6,11 @@ all need.
 """
 import array
 import re
-import subprocess
 import wave
 from pathlib import Path
 from typing import Optional, Tuple
+
+from .mp3_encoder import encode_pcm_to_mp3
 
 MAME_BIN = Path("/opt/mame/mame")
 ROM_ROOT = Path("/mame_roms")
@@ -99,11 +100,4 @@ def parse_speech_marker(mame_stdout: bytes) -> float:
 
 
 def encode_mp3(chan: array.array, sr: int, output_path: Path) -> bool:
-    ffmpeg_cmd = [
-        "ffmpeg", "-f", "s16le", "-ar", str(sr), "-ac", "1",
-        "-i", "pipe:0",
-        "-af", "loudnorm",
-        str(output_path), "-y",
-    ]
-    proc = subprocess.run(ffmpeg_cmd, input=chan.tobytes(), capture_output=True)
-    return proc.returncode == 0 and output_path.exists()
+    return encode_pcm_to_mp3(chan.tobytes(), sr, 1, output_path, normalize=True)
