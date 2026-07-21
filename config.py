@@ -19,3 +19,8 @@ WINDOWS_TTS_TIMEOUT = 30
 COQUI_TTS_URL = "http://coqui-tts:8891"
 COQUI_TTS_ENABLED = True
 COQUI_TTS_TIMEOUT = 300
+
+# Piper TTS sidecar configuration
+PIPER_URL = "http://piper-tts:8892"
+PIPER_ENABLED = True
+PIPER_TIMEOUT = 30

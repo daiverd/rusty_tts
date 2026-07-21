@@ -12,6 +12,8 @@ services:
     depends_on:
       coqui-tts:
         condition: service_healthy
+      piper-tts:
+        condition: service_healthy
     environment:
       # CORS configuration - customize as needed
       - CORS_ORIGINS=http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080,https://tts.example.com
@@ -72,6 +74,28 @@ services:
         reservations:
           memory: 1G
           cpus: '1.0'
+
+  piper-tts:
+    build:
+      context: ./piper
+    container_name: rusty-tts-piper
+    networks:
+      - rusty
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8892/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
 
   # Optional: Add a reverse proxy (uncomment if needed)
   # nginx:

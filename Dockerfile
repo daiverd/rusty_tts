@@ -156,17 +156,10 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir piper-tts && \
     pip cache purge && \
     rm -rf ~/.cache/pip && \
     rm -rf /tmp/* && \
     (find /usr/local -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true)
-
-# Bake in Piper's voice models (providers/piper.py) so no download happens
-# at request time - each is a small ONNX model (tens of MB), unlike
-# Coqui's models, so no need for a warm sidecar (see coqui/).
-RUN python -m piper.download_voices --download-dir /opt/piper/voices \
-        en_US-lessac-medium en_US-amy-medium en_GB-alan-medium
 
 # Pre-bake g2p_en's NLTK data (used by providers/votrax.py) so it's not
 # fetched from the network at request time. NLTK data location naming
