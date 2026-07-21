@@ -1,6 +1,6 @@
 services:
   rusty-tts:
-    build: 
+    build:
       context: .
       # Optional: specify target if you want to build only to builder stage for debugging
       # target: builder
@@ -9,6 +9,9 @@ services:
       - "127.0.0.1:8887:8887"
     networks:
       - rusty
+    depends_on:
+      coqui-tts:
+        condition: service_healthy
     environment:
       # CORS configuration - customize as needed
       - CORS_ORIGINS=http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080,https://tts.example.com
@@ -42,6 +45,34 @@ services:
           memory: 384M  # Reduced from 512M
           cpus: '0.5'
 
+  coqui-tts:
+    build:
+      context: ./coqui
+    container_name: rusty-tts-coqui
+    networks:
+      - rusty
+    volumes:
+      # Persist downloaded model weights (~500MB) between restarts, so
+      # only the very first boot pays the download cost.
+      - coqui_models:/root/.local/share/tts
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8891/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      # First boot downloads + loads model+vocoder weights, which can take
+      # several minutes.
+      start_period: 600s
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
   # Optional: Add a reverse proxy (uncomment if needed)
   # nginx:
   #   image: nginx:alpine
@@ -58,6 +89,8 @@ services:
 
 volumes:
   audio_files:
+    driver: local
+  coqui_models:
     driver: local
 
 networks:

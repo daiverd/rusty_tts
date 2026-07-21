@@ -156,11 +156,10 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir TTS && \
     pip cache purge && \
     rm -rf ~/.cache/pip && \
     rm -rf /tmp/* && \
-    find /usr/local -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    (find /usr/local -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true)
 
 # Pre-bake g2p_en's NLTK data (used by providers/votrax.py) so it's not
 # fetched from the network at request time. NLTK data location naming

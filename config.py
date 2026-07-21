@@ -14,3 +14,8 @@ AUDIO_DIR = "audio_files"
 WINDOWS_TTS_URL = "http://windows:5000"
 WINDOWS_TTS_ENABLED = True
 WINDOWS_TTS_TIMEOUT = 30
+
+# Coqui TTS sidecar configuration
+COQUI_TTS_URL = "http://coqui-tts:8891"
+COQUI_TTS_ENABLED = True
+COQUI_TTS_TIMEOUT = 300
