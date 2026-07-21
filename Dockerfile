@@ -1,3 +1,6 @@
+# syntax=docker/dockerfile:1
+# ^ needed for the RUN --mount=type=cache below (mame-builder stage)
+
 # =============================================================================
 # BUILD STAGE - Compile custom TTS engines
 # =============================================================================
@@ -98,7 +101,22 @@ RUN git apply --verbose /tmp/doubletalkpc.patch && rm /tmp/doubletalkpc.patch
 # own dependencies - a2bus/echoplus/tms5220, votrax/6802/6850, votrax/z80/
 # i8251/i8255/ay8910, genpc/i86/i186 - automatically) - no Qt debugger, no
 # dev tools.
-RUN make SOURCES=src/mame/apple/apple2e.cpp,src/mame/votrax/votrtnt.cpp,src/mame/votrax/votrpss.cpp,src/mame/pc/genpc.cpp \
+#
+# --mount=type=cache,target=/mame/build persists MAME's object-file/
+# generated-source directory across separate `docker build` invocations,
+# independent of Docker's normal layer-cache invalidation. Without it,
+# every edit to native/mame-doubletalk/mame-src-overlay/ (the COPY two
+# steps up) invalidates this RUN's layer cache and forces a full ~15-20min
+# rebuild of the entire scoped driver set from nothing, even though only
+# a handful of DoubleTalk-specific files actually changed. With the mount,
+# make's own mtime-based dependency tracking sees everything else as
+# already-built (same content+mtimes as last time, since git clone's layer
+# is still cache-hit and unchanged) and only recompiles+relinks what
+# actually differs - seconds, not minutes, for a DoubleTalk-only edit. The
+# final linked binary (/mame/mame) lands outside build/, so it's unaffected
+# by the mount not persisting into the image layer.
+RUN --mount=type=cache,target=/mame/build \
+    make SOURCES=src/mame/apple/apple2e.cpp,src/mame/votrax/votrtnt.cpp,src/mame/votrax/votrpss.cpp,src/mame/pc/genpc.cpp \
     USE_QTDEBUG=0 REGENIE=1 NOWERROR=1 -j"$(nproc)"
 
 # =============================================================================
