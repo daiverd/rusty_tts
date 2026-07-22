@@ -9,7 +9,8 @@ from typing import List
 from . import BaseTTSEngine
 from . import _mame_audio as mame_audio
 
-# Standalone DoubleTalk PC emulator (native/retrochip/doubletalk): the same
+# Standalone DoubleTalk PC emulator (sourced from the sibling doubletalk_pc
+# repo, doubletalk/ subdir, at build time): the same
 # vendored MAME 80C188EB core + original firmware ROM as the old MAME-based
 # provider, minus MAME itself - no host PC boot, no GLaBIOS, no audio-mixer
 # capture. Direct DAC capture at the card's own 10504Hz timer cadence,
@@ -31,9 +32,10 @@ class DoubleTalkEngine(BaseTTSEngine):
     host driver (e.g. Linux's dtlk.c) would: RDY-gated bytes, CR to start
     speech. Requires the DoubleTalk PC firmware ROM (archive.org dump -
     see scripts/fetch_roms.sh) mounted at /mame_roms; silently unavailable
-    if the ROM or the dtalk_cli binary is missing. See
-    native/retrochip/doubletalk/ and the companion doubletalk-pc /
-    mame-doubletalk research repos for the reverse-engineering history."""
+    if the ROM or the dtalk_cli binary is missing. See the doubletalk_pc
+    repo (doubletalk/ subdir, built into this image at build time) and the
+    companion mame-doubletalk research repo for the reverse-engineering
+    history."""
 
     def get_voices(self) -> List[str]:
         return ["doubletalk"]

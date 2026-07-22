@@ -4,6 +4,10 @@ services:
       context: .
       # Optional: specify target if you want to build only to builder stage for debugging
       # target: builder
+      # Named build context: sources the standalone DoubleTalk PC emulator
+      # from the sibling doubletalk_pc repo (see Dockerfile builder stage).
+      additional_contexts:
+        doubletalk_src: ../../doubletalk_pc
     container_name: rusty-tts-app
     ports:
       - "127.0.0.1:8887:8887"

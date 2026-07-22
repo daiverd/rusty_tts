@@ -44,10 +44,13 @@ RUN git clone --depth 1 https://github.com/dectalk/dectalk.git /tmp/dectalk && \
 # Build retrochip: our standalone port of MAME's speech-chip cores
 # (see native/retrochip/, BSD-3-Clause) plus the CLI that drives them.
 # Also build the standalone DoubleTalk PC emulator (vendored MAME 80C188EB
-# core + board wrapper, see native/retrochip/doubletalk/) used by
-# providers/doubletalk.py.
+# core + board wrapper), sourced from the sibling doubletalk_pc repo via
+# the doubletalk_src named build context (see docker-compose.yml) since
+# it's used by providers/doubletalk.py.
 COPY native/retrochip /tmp/retrochip-src
-RUN g++ -Wall -O2 -std=c++17 -o /usr/local/bin/retrochip \
+COPY --from=doubletalk_src doubletalk /tmp/retrochip-src/doubletalk
+RUN rm -rf /tmp/retrochip-src/doubletalk/build && \
+    g++ -Wall -O2 -std=c++17 -o /usr/local/bin/retrochip \
         /tmp/retrochip-src/main.cpp /tmp/retrochip-src/tms5220.cpp \
         /tmp/retrochip-src/sp0256.cpp /tmp/retrochip-src/votrax.cpp \
         /tmp/retrochip-src/tms5110.cpp /tmp/retrochip-src/s14001a.cpp && \
@@ -71,9 +74,9 @@ RUN git clone --depth 1 https://github.com/tornupnegatives/TMS-Express.git /tmp/
 # MAME BUILD STAGE - Scoped build covering the remaining real-hardware
 # automation providers (Textalker/Echo II Plus, Votrax Type 'N Talk, Votrax
 # Personal Speech System). DoubleTalk PC no longer builds through MAME - it
-# uses the standalone emulator from the builder stage (native/retrochip/
-# doubletalk/, built above). Separate stage so unrelated app changes don't
-# invalidate this ~15-20min build's Docker layer cache.
+# uses the standalone emulator from the builder stage (sourced from the
+# sibling doubletalk_pc repo, built above). Separate stage so unrelated
+# app changes don't invalidate this ~15-20min build's Docker layer cache.
 # =============================================================================
 FROM debian:trixie-slim AS mame-builder
 
@@ -95,8 +98,8 @@ WORKDIR /mame
 # own dependencies - a2bus/echoplus/tms5220, votrax/6802/6850, votrax/z80/
 # i8251/i8255/ay8910 - automatically) - no Qt debugger, no dev tools.
 # (DoubleTalk PC is NOT in this build: rusty_tts uses the standalone
-# emulator from native/retrochip/doubletalk/; the MAME reference driver
-# lives in the companion mame-doubletalk repo.)
+# emulator sourced from the sibling doubletalk_pc repo; the MAME
+# reference driver lives in the companion mame-doubletalk repo.)
 #
 # --mount=type=cache,target=/mame/build persists MAME's object-file/
 # generated-source directory across separate `docker build` invocations,

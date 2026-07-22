@@ -186,8 +186,8 @@ cp -n "roms/sc01a.bin" "mame_roms/votrpss/sc01a.bin" 2>/dev/null || true
 #     throughout the doubletalk-pc/mame-doubletalk research repos (not
 #     mirrored in a MAME romset collection like the chips above, since
 #     DoubleTalk PC support isn't upstreamed to mamedev/mame). Runs on the
-#     standalone emulator (native/retrochip/doubletalk/) - no host-PC BIOS
-#     needed anymore.
+#     standalone emulator (sourced from the sibling doubletalk_pc repo) -
+#     no host-PC BIOS needed anymore.
 
 fetch_and_extract \
     "DoubleTalk PC firmware" \
