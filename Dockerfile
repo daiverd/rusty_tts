@@ -94,17 +94,15 @@ WORKDIR /mame
 # Scoped build: only the drivers these providers need (each pulls in its
 # own dependencies - a2bus/echoplus/tms5220, votrax/6802/6850, votrax/z80/
 # i8251/i8255/ay8910 - automatically) - no Qt debugger, no dev tools.
-# (The DoubleTalk MAME overlay that used to be applied here lives on in
-# native/mame-doubletalk/ as the reference implementation the standalone
-# port is validated against - see native/retrochip/doubletalk/.)
+# (DoubleTalk PC is NOT in this build: rusty_tts uses the standalone
+# emulator from native/retrochip/doubletalk/; the MAME reference driver
+# lives in the companion mame-doubletalk repo.)
 #
 # --mount=type=cache,target=/mame/build persists MAME's object-file/
 # generated-source directory across separate `docker build` invocations,
 # independent of Docker's normal layer-cache invalidation. Without it,
-# every edit to native/mame-doubletalk/mame-src-overlay/ (the COPY two
-# steps up) invalidates this RUN's layer cache and forces a full ~15-20min
-# rebuild of the entire scoped driver set from nothing, even though only
-# a handful of DoubleTalk-specific files actually changed. With the mount,
+# any change that invalidates an earlier layer forces a full ~15-20min
+# rebuild of the entire scoped driver set from nothing. With the mount,
 # make's own mtime-based dependency tracking sees everything else as
 # already-built (same content+mtimes as last time, since git clone's layer
 # is still cache-hit and unchanged) and only recompiles+relinks what
