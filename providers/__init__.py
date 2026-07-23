@@ -182,6 +182,7 @@ from .doubletalk import DoubleTalkEngine
 from .smoothtalker import SmoothTalkerEngine
 from .keynote import BestSpeechEngine
 from .keynote_lang import BestSpeechLangEngine
+from .eloquence import EloquenceEngine
 
 __all__ = [
     'TTSProvider',
@@ -206,4 +207,5 @@ __all__ = [
     'SmoothTalkerEngine',
     'BestSpeechEngine',
     'BestSpeechLangEngine',
+    'EloquenceEngine',
 ]

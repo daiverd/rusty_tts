@@ -72,6 +72,15 @@ RUN gcc -O2 -fPIC -shared -Wall -o /usr/local/lib/libbst_shim.so \
         /tmp/keynote-src/bst_lang_shim.c -lunicorn && \
     rm -rf /tmp/keynote-src
 
+# Build the Apple Eloquence resident host (native/eloquence/host.c - see
+# that file's header comment for why this runs as a separate small
+# process rather than being dlopen'd via ctypes from the main app
+# directly). Plain native ELF, no Wine, no emulation.
+COPY native/eloquence /tmp/eloquence-src
+RUN gcc -O2 -Wall -o /usr/local/bin/eloquence_host \
+        /tmp/eloquence-src/host.c -ldl && \
+    rm -rf /tmp/eloquence-src
+
 # Build TMS-Express: WAV -> TMS5220-native LPC-10 frame encoder
 # (https://github.com/tornupnegatives/TMS-Express, GPL-3.0). Vendored here as
 # a standalone compiled CLI, invoked only via subprocess by this project's
@@ -172,7 +181,11 @@ RUN apt-get update && apt-get install -y \
     # the Textalker disk image - Textalker automation)
     default-jre-headless \
     # Runtime lib for libbst_shim.so (BestSpeech/Keynote Gold - providers/keynote.py)
-    libunicorn2t64 && \
+    libunicorn2t64 \
+    # Runtime libs for the converted Apple Eloquence ELF .so's (compiled
+    # against libc++, not libstdc++ - see providers/eloquence.py)
+    libc++1 \
+    libc++abi1 && \
     rm -rf /var/lib/apt/lists/*
 
 # AppleCommander (https://github.com/AppleCommander/AppleCommander,
@@ -193,6 +206,7 @@ COPY --from=builder /usr/local/bin/tms-express /usr/local/bin/
 COPY --from=builder /opt/dectalk /opt/dectalk
 COPY --from=builder /usr/local/lib/libbst_shim.so /usr/local/lib/
 COPY --from=builder /usr/local/lib/libbst_lang_shim.so /usr/local/lib/
+COPY --from=builder /usr/local/bin/eloquence_host /usr/local/bin/
 RUN ln -s /opt/dectalk/say /usr/bin/dectalk && \
     echo "/opt/dectalk/lib" > /etc/ld.so.conf.d/dectalk.conf && ldconfig
 
@@ -229,6 +243,19 @@ COPY . .
 
 # Create audio files directory
 RUN mkdir -p audio_files
+
+# Pre-generate the per-language eci.ini directories providers/eloquence.py
+# spawns eloquence_host into (one per Apple Eloquence language module),
+# each just "[1.0]\nPath=/app/roms/eloquence/<lang>.so\nVersion=6.1\n".
+# Baked in at build time since the absolute paths are fixed/known then.
+# eloquence_host itself never chdir()s - its working directory must
+# already be one of these when it starts (subprocess.Popen(cwd=...)) -
+# see native/eloquence/host.c's header comment for why that matters.
+RUN for lang in enu eng deu fra frc esp esm ita fin ptb; do \
+        dir="roms/eloquence/langdirs/${lang}"; \
+        mkdir -p "$dir"; \
+        printf '[1.0]\nPath=/app/roms/eloquence/%s.so\nVersion=6.1\n' "$lang" > "$dir/eci.ini"; \
+    done
 
 # Set environment variables
 ENV PYTHONPATH=/app
