@@ -8,7 +8,7 @@ from providers import (
     VotraxTypeNTalkEngine, VotraxPersonalSpeechSystemEngine, SnSpellEngine,
     S14001aCalculatorEngine, DoubleTalkEngine, SmoothTalkerEngine,
     BestSpeechEngine, BestSpeechLangEngine, EloquenceEngine, WinTalkerEngine,
-    MonologueEngine
+    MonologueEngine, SoftVoiceEngine
 )
 
 
@@ -45,6 +45,7 @@ class TTSManager:
             "eloquence": EloquenceEngine(),
             "wintalker": WinTalkerEngine(),
             "monologue": MonologueEngine(),
+            "softvoice": SoftVoiceEngine(),
             # tms5220 is intentionally not registered: LPC-resynthesis of
             # another engine's audio through the chip (see providers/tms5220.py)
             # is functional but doesn't sound good (sibilant/fricative sounds

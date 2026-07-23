@@ -84,6 +84,16 @@ RUN gcc -O2 -fPIC -shared -Wall -o /usr/local/lib/libbst_shim.so \
         /tmp/keynote-src/bst_lang_shim.c -lunicorn && \
     rm -rf /tmp/keynote-src
 
+# Build libsv_shim: Unicorn-emulated Win32 shim for SoftVoice, Inc.'s
+# TIBASE32.DLL (native/softvoice/sv_shim.c). Runs the proprietary
+# TIBASE32.DLL/TIENG32.DLL (mounted at runtime from roms/softvoice/, not
+# baked into this image - see roms/softvoice/PROVENANCE.md) directly, with
+# no Windows/Wine dependency - see providers/softvoice.py.
+COPY native/softvoice /tmp/softvoice-src
+RUN gcc -O2 -fPIC -shared -Wall -o /usr/local/lib/libsv_shim.so \
+        /tmp/softvoice-src/sv_shim.c -lunicorn && \
+    rm -rf /tmp/softvoice-src
+
 # Build the Apple Eloquence resident host (native/eloquence/host.c - see
 # that file's header comment for why this runs as a separate small
 # process rather than being dlopen'd via ctypes from the main app
@@ -218,6 +228,7 @@ COPY --from=builder /usr/local/bin/tms-express /usr/local/bin/
 COPY --from=builder /opt/dectalk /opt/dectalk
 COPY --from=builder /usr/local/lib/libbst_shim.so /usr/local/lib/
 COPY --from=builder /usr/local/lib/libbst_lang_shim.so /usr/local/lib/
+COPY --from=builder /usr/local/lib/libsv_shim.so /usr/local/lib/
 COPY --from=builder /usr/local/bin/eloquence_host /usr/local/bin/
 COPY --from=builder /opt/wintalker /opt/wintalker
 RUN ln -s /opt/dectalk/say /usr/bin/dectalk && \
