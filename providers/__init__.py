@@ -183,6 +183,7 @@ from .smoothtalker import SmoothTalkerEngine
 from .keynote import BestSpeechEngine
 from .keynote_lang import BestSpeechLangEngine
 from .eloquence import EloquenceEngine
+from .wintalker import WinTalkerEngine
 
 __all__ = [
     'TTSProvider',
@@ -208,4 +209,5 @@ __all__ = [
     'BestSpeechEngine',
     'BestSpeechLangEngine',
     'EloquenceEngine',
+    'WinTalkerEngine',
 ]

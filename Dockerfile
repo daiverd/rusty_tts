@@ -42,6 +42,18 @@ RUN git clone --depth 1 https://github.com/dectalk/dectalk.git /tmp/dectalk && \
     make install && \
     rm -rf /tmp/dectalk
 
+# Build WinTalker (MacinTalk/PlainTalk-family formant synth, 17 voices)
+# via lintalker (github.com/dectalk/lintalker) - an already-complete
+# native Linux CLI port (Win32-type compat shim + reimplemented DLL-glue
+# layer), no Wine/emulation. See providers/wintalker.py.
+RUN git clone --depth 1 https://github.com/dectalk/lintalker.git /tmp/lintalker && \
+    cd /tmp/lintalker && \
+    make config=release_x64 && \
+    mkdir -p /opt/wintalker && \
+    cp bin/Release/wintalker /opt/wintalker/wintalker && \
+    cp English.lex /opt/wintalker/English.lex && \
+    rm -rf /tmp/lintalker
+
 # Build retrochip: our standalone port of MAME's speech-chip cores
 # (see native/retrochip/, BSD-3-Clause) plus the CLI that drives them.
 # Also build the standalone DoubleTalk PC emulator (vendored MAME 80C188EB
@@ -207,8 +219,10 @@ COPY --from=builder /opt/dectalk /opt/dectalk
 COPY --from=builder /usr/local/lib/libbst_shim.so /usr/local/lib/
 COPY --from=builder /usr/local/lib/libbst_lang_shim.so /usr/local/lib/
 COPY --from=builder /usr/local/bin/eloquence_host /usr/local/bin/
+COPY --from=builder /opt/wintalker /opt/wintalker
 RUN ln -s /opt/dectalk/say /usr/bin/dectalk && \
-    echo "/opt/dectalk/lib" > /etc/ld.so.conf.d/dectalk.conf && ldconfig
+    echo "/opt/dectalk/lib" > /etc/ld.so.conf.d/dectalk.conf && ldconfig && \
+    ln -s /opt/wintalker/wintalker /usr/local/bin/wintalker
 
 # Copy the vendored MAME binary (Apple IIe/Echo II Plus/Textalker
 # automation - providers/textalker.py). Proprietary ROMs/disk image are
