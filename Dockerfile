@@ -68,6 +68,8 @@ RUN rm -rf /tmp/retrochip-src/doubletalk/build && \
 COPY native/keynote /tmp/keynote-src
 RUN gcc -O2 -fPIC -shared -Wall -o /usr/local/lib/libbst_shim.so \
         /tmp/keynote-src/bst_shim.c -lunicorn && \
+    gcc -O2 -fPIC -shared -Wall -o /usr/local/lib/libbst_lang_shim.so \
+        /tmp/keynote-src/bst_lang_shim.c -lunicorn && \
     rm -rf /tmp/keynote-src
 
 # Build TMS-Express: WAV -> TMS5220-native LPC-10 frame encoder
@@ -190,6 +192,7 @@ COPY --from=builder /usr/local/bin/dtalk_cli /usr/local/bin/
 COPY --from=builder /usr/local/bin/tms-express /usr/local/bin/
 COPY --from=builder /opt/dectalk /opt/dectalk
 COPY --from=builder /usr/local/lib/libbst_shim.so /usr/local/lib/
+COPY --from=builder /usr/local/lib/libbst_lang_shim.so /usr/local/lib/
 RUN ln -s /opt/dectalk/say /usr/bin/dectalk && \
     echo "/opt/dectalk/lib" > /etc/ld.so.conf.d/dectalk.conf && ldconfig
 

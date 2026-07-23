@@ -181,6 +181,7 @@ from .s14001a_calculator import S14001aCalculatorEngine
 from .doubletalk import DoubleTalkEngine
 from .smoothtalker import SmoothTalkerEngine
 from .keynote import BestSpeechEngine
+from .keynote_lang import BestSpeechLangEngine
 
 __all__ = [
     'TTSProvider',
@@ -204,4 +205,5 @@ __all__ = [
     'DoubleTalkEngine',
     'SmoothTalkerEngine',
     'BestSpeechEngine',
+    'BestSpeechLangEngine',
 ]
