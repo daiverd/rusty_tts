@@ -184,6 +184,7 @@ from .keynote import BestSpeechEngine
 from .keynote_lang import BestSpeechLangEngine
 from .eloquence import EloquenceEngine
 from .wintalker import WinTalkerEngine
+from .monologue import MonologueEngine
 
 __all__ = [
     'TTSProvider',
@@ -210,4 +211,5 @@ __all__ = [
     'BestSpeechLangEngine',
     'EloquenceEngine',
     'WinTalkerEngine',
+    'MonologueEngine',
 ]
