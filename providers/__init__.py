@@ -180,6 +180,7 @@ from .snspell import SnSpellEngine
 from .s14001a_calculator import S14001aCalculatorEngine
 from .doubletalk import DoubleTalkEngine
 from .smoothtalker import SmoothTalkerEngine
+from .keynote import BestSpeechEngine
 
 __all__ = [
     'TTSProvider',
@@ -202,4 +203,5 @@ __all__ = [
     'S14001aCalculatorEngine',
     'DoubleTalkEngine',
     'SmoothTalkerEngine',
+    'BestSpeechEngine',
 ]

@@ -6,7 +6,8 @@ from providers import (
     DECtalkEngine, SAMEngine, PiperEngine, CoquiTTSEngine, WindowsEngine,
     Tms5220Engine, Sp0256Engine, VotraxEngine, TextalkerEngine,
     VotraxTypeNTalkEngine, VotraxPersonalSpeechSystemEngine, SnSpellEngine,
-    S14001aCalculatorEngine, DoubleTalkEngine, SmoothTalkerEngine
+    S14001aCalculatorEngine, DoubleTalkEngine, SmoothTalkerEngine,
+    BestSpeechEngine
 )
 
 
@@ -38,6 +39,7 @@ class TTSManager:
             "s14001a_calculator": S14001aCalculatorEngine(),
             "doubletalk": DoubleTalkEngine(),
             "smoothtalker": SmoothTalkerEngine(),
+            "bestspeech": BestSpeechEngine(),
             # tms5220 is intentionally not registered: LPC-resynthesis of
             # another engine's audio through the chip (see providers/tms5220.py)
             # is functional but doesn't sound good (sibilant/fricative sounds

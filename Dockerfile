@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     autoconf \
     automake \
     libsndfile1-dev \
+    libunicorn-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Build SAM TTS
@@ -57,6 +58,17 @@ RUN rm -rf /tmp/retrochip-src/doubletalk/build && \
     make -C /tmp/retrochip-src/doubletalk -j"$(nproc)" build/dtalk_cli && \
     cp /tmp/retrochip-src/doubletalk/build/dtalk_cli /usr/local/bin/dtalk_cli && \
     rm -rf /tmp/retrochip-src
+
+# Build libbst_shim: Unicorn-emulated Win32 shim for the BestSpeech/Keynote
+# Gold engine (native/keynote/, vendored from cullen-gallagher/
+# BestSpeechForMac - see that file's header comment). Runs the proprietary
+# b32_tts.dll (mounted at runtime from roms/keynote/, not baked into this
+# image - see roms/keynote/PROVENANCE.md) directly, with no Windows/Wine
+# dependency - see providers/keynote.py.
+COPY native/keynote /tmp/keynote-src
+RUN gcc -O2 -fPIC -shared -Wall -o /usr/local/lib/libbst_shim.so \
+        /tmp/keynote-src/bst_shim.c -lunicorn && \
+    rm -rf /tmp/keynote-src
 
 # Build TMS-Express: WAV -> TMS5220-native LPC-10 frame encoder
 # (https://github.com/tornupnegatives/TMS-Express, GPL-3.0). Vendored here as
@@ -156,7 +168,9 @@ RUN apt-get update && apt-get install -y \
     libgl1 \
     # JRE for AppleCommander (writes the per-request HELLO program onto
     # the Textalker disk image - Textalker automation)
-    default-jre-headless && \
+    default-jre-headless \
+    # Runtime lib for libbst_shim.so (BestSpeech/Keynote Gold - providers/keynote.py)
+    libunicorn2t64 && \
     rm -rf /var/lib/apt/lists/*
 
 # AppleCommander (https://github.com/AppleCommander/AppleCommander,
@@ -175,6 +189,7 @@ COPY --from=builder /usr/local/bin/retrochip /usr/local/bin/
 COPY --from=builder /usr/local/bin/dtalk_cli /usr/local/bin/
 COPY --from=builder /usr/local/bin/tms-express /usr/local/bin/
 COPY --from=builder /opt/dectalk /opt/dectalk
+COPY --from=builder /usr/local/lib/libbst_shim.so /usr/local/lib/
 RUN ln -s /opt/dectalk/say /usr/bin/dectalk && \
     echo "/opt/dectalk/lib" > /etc/ld.so.conf.d/dectalk.conf && ldconfig
 
