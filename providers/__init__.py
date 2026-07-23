@@ -186,6 +186,7 @@ from .eloquence import EloquenceEngine
 from .wintalker import WinTalkerEngine
 from .monologue import MonologueEngine
 from .softvoice import SoftVoiceEngine
+from .amiganarrator import AmigaNarratorEngine
 
 __all__ = [
     'TTSProvider',
@@ -214,4 +215,5 @@ __all__ = [
     'WinTalkerEngine',
     'MonologueEngine',
     'SoftVoiceEngine',
+    'AmigaNarratorEngine',
 ]

@@ -54,6 +54,20 @@ RUN git clone --depth 1 https://github.com/dectalk/lintalker.git /tmp/lintalker 
     cp English.lex /opt/wintalker/English.lex && \
     rm -rf /tmp/lintalker
 
+# Build AmigaNarrator (narrator.device/translator.library host - the real
+# AmigaOS 1.x 680x0 synthesizer code, run under Musashi (a pure-C 68k CPU
+# emulator, git submodule) - no Wine/VM/MAME. Same shape as the WinTalker
+# build above. The proprietary narrator.device/translator.library
+# themselves are NOT baked in here - mounted at runtime from
+# roms/amiganarrator/ (see that dir's PROVENANCE.md) - see
+# providers/amiganarrator.py.
+RUN git clone --depth 1 --recurse-submodules https://github.com/nicodex/AmigaNarrator.git /tmp/amiganarrator && \
+    cd /tmp/amiganarrator && \
+    make && \
+    mkdir -p /opt/amiganarrator && \
+    cp bin/narrator bin/translator /opt/amiganarrator/ && \
+    rm -rf /tmp/amiganarrator
+
 # Build retrochip: our standalone port of MAME's speech-chip cores
 # (see native/retrochip/, BSD-3-Clause) plus the CLI that drives them.
 # Also build the standalone DoubleTalk PC emulator (vendored MAME 80C188EB
@@ -231,6 +245,7 @@ COPY --from=builder /usr/local/lib/libbst_lang_shim.so /usr/local/lib/
 COPY --from=builder /usr/local/lib/libsv_shim.so /usr/local/lib/
 COPY --from=builder /usr/local/bin/eloquence_host /usr/local/bin/
 COPY --from=builder /opt/wintalker /opt/wintalker
+COPY --from=builder /opt/amiganarrator /opt/amiganarrator
 RUN ln -s /opt/dectalk/say /usr/bin/dectalk && \
     echo "/opt/dectalk/lib" > /etc/ld.so.conf.d/dectalk.conf && ldconfig && \
     ln -s /opt/wintalker/wintalker /usr/local/bin/wintalker
