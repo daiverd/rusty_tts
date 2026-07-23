@@ -123,6 +123,9 @@ struct sv_engine {
     // waveOut state: only one device open at a time
     uint32_t wave_callback_hwnd; // target hwnd for MM_WOM_DONE if CALLBACK_WINDOW
     int wave_open;
+    uint32_t wave_sample_rate;  // read from the DLL's own waveOutOpen WAVEFORMATEX
+    uint32_t wave_channels;
+    uint32_t wave_bits;         // 8 or 16 - TIBASE32 actually opens 8-bit unsigned PCM
 
     // captured audio + completion signal
     sv_sample_cb cb;
@@ -251,10 +254,24 @@ static uint32_t run_shim(sv_engine *e, const char *fn, int *arg_dwords){
     // ---- WINMM: capture audio, never play it ----
     if (!strcmp(fn,"waveOutOpen")) {
         uint32_t phwo=arg(e,0);
+        uint32_t pFormat=arg(e,2);
         uint32_t dwCallback=arg(e,3), fdwOpen=arg(e,5);
         if (phwo) wr32(e,phwo,0xBEEF);
         e->wave_open = 1;
         e->wave_callback_hwnd = (fdwOpen & 0x00010000u /*CALLBACK_WINDOW*/) ? dwCallback : 0;
+        if (pFormat) {
+            // WAVEFORMATEX: wFormatTag(2) nChannels(2) nSamplesPerSec(4) ...
+            uint32_t tag_channels = rd32(e, pFormat + 0); // low16=wFormatTag, high16=nChannels
+            uint32_t samplesPerSec = rd32(e, pFormat + 4);
+            uint32_t bitsBlock = rd32(e, pFormat + 12); // low16=nBlockAlign, high16=wBitsPerSample
+            uint16_t nChannels = (uint16_t)(tag_channels >> 16);
+            uint16_t bitsPerSample = (uint16_t)(bitsBlock >> 16);
+            if (samplesPerSec) e->wave_sample_rate = samplesPerSec;
+            if (nChannels) e->wave_channels = nChannels;
+            if (bitsPerSample) e->wave_bits = bitsPerSample;
+            DBG("[sv_shim] waveOutOpen format: tag=0x%x channels=%u samplesPerSec=%u bitsPerSample=%u\n",
+                tag_channels & 0xFFFF, nChannels, samplesPerSec, bitsPerSample);
+        }
         DBG("[sv_shim] waveOutOpen callback_hwnd=0x%x flags=0x%x\n", dwCallback, fdwOpen);
         *arg_dwords=6; return 0;
     }
@@ -271,11 +288,26 @@ static uint32_t run_shim(sv_engine *e, const char *fn, int *arg_dwords){
         uint32_t dwLen  = rd32(e, pwh + 4);
         DBG("[sv_shim] waveOutWrite lpData=0x%x len=%u\n", lpData, dwLen);
         if (lpData && dwLen && dwLen < 0x02000000 && e->cb) {
-            int16_t *tmp = (int16_t*)malloc(dwLen);
-            if (tmp) {
-                uc_mem_read(e->uc, lpData, tmp, dwLen);
-                e->cb(tmp, dwLen/2, e->cb_ctx);
-                free(tmp);
+            if (e->wave_bits == 16) {
+                int16_t *tmp = (int16_t*)malloc(dwLen);
+                if (tmp) {
+                    uc_mem_read(e->uc, lpData, tmp, dwLen);
+                    e->cb(tmp, dwLen/2, e->cb_ctx);
+                    free(tmp);
+                }
+            } else {
+                // TIBASE32 actually opens the wave device as 8-bit UNSIGNED
+                // PCM (silence = 0x80), not 16-bit signed - confirmed by
+                // reading the real WAVEFORMATEX it passes to waveOutOpen.
+                // Widen to signed 16-bit for the callback's fixed contract.
+                uint8_t *raw = (uint8_t*)malloc(dwLen);
+                int16_t *tmp = (int16_t*)malloc(dwLen * 2);
+                if (raw && tmp) {
+                    uc_mem_read(e->uc, lpData, raw, dwLen);
+                    for (uint32_t i=0;i<dwLen;i++) tmp[i] = (int16_t)(((int)raw[i] - 128) * 256);
+                    e->cb(tmp, dwLen, e->cb_ctx);
+                }
+                free(raw); free(tmp);
             }
         }
         uint32_t flags = rd32(e, pwh + 16);
@@ -708,7 +740,7 @@ void sv_destroy(sv_engine *e){
     free(e);
 }
 
-int sv_sample_rate(const sv_engine *e){ (void)e; return 11025; }
+int sv_sample_rate(const sv_engine *e){ return e->wave_sample_rate ? (int)e->wave_sample_rate : 11025; }
 
 // Pump the multimedia timer callback synchronously until speech is done or
 // no more progress is being made (safety valve).
