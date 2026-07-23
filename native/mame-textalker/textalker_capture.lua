@@ -24,6 +24,8 @@
 -- none; emu.wait() has no such issue.
 
 local wait_after = tonumber(os.getenv("TEXTALKER_WAIT_AFTER") or "10")
+local banner_marker = os.getenv("TEXTALKER_BANNER_MARKER") or "COPYRIGHT 1981"
+local banner_timeout = tonumber(os.getenv("TEXTALKER_BANNER_TIMEOUT") or "20")
 
 local function read_text_screen()
     local pspace = manager.machine.devices[":maincpu"].spaces["program"]
@@ -59,7 +61,9 @@ print("textalker: booting, HELLO auto-runs (BRUN + PRINT baked in)")
 -- finishes installing and hands control back to HELLO for the PRINT of
 -- the actual phrase. Mark the emulated-time position here so
 -- providers/textalker.py can crop the WAV capture to start after it.
-local banner_seen = wait_for_screen_text("COPYRIGHT 1981", 20.0)
+-- The exact banner text (and how long it takes to appear) differs by
+-- driver version - see providers/textalker.py's _VOICES table.
+local banner_seen = wait_for_screen_text(banner_marker, banner_timeout)
 print("textalker: banner_seen=" .. tostring(banner_seen))
 print("textalker: speech_starts_at_seconds=" .. string.format("%.3f", emu.time()))
 

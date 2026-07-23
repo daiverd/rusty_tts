@@ -151,6 +151,16 @@ fetch_and_extract \
     "mame_roms/disks" "Textalker_1.3.dsk" \
     "00da4aef"
 
+# --- Textalker 3.1.2 driver disk (1985/86 rewrite, distinct letter-to-
+#     sound rules from 1.3 - see providers/textalker.py's _VOICES) ---
+
+fetch_and_extract \
+    "Textalker 3.1.2 disk image" \
+    "https://archive.org/download/textalker-3.1.2-dos-3.3/Textalker%203.1.2%20-%20DOS%203.3.dsk" \
+    "Textalker 3.1.2 - DOS 3.3.dsk" \
+    "mame_roms/disks" "Textalker_3.1.2.dsk" \
+    "c91267f4"
+
 # --- Votrax Type 'N Talk (standalone RS-232 speech synthesizer, 1980) ---
 
 fetch_and_extract \
