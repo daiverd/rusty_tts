@@ -3,3 +3,4 @@ requests
 uvicorn
 g2p-en
 lameenc
+unicorn

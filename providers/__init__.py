@@ -179,6 +179,7 @@ from .votrax_pss import VotraxPersonalSpeechSystemEngine
 from .snspell import SnSpellEngine
 from .s14001a_calculator import S14001aCalculatorEngine
 from .doubletalk import DoubleTalkEngine
+from .smoothtalker import SmoothTalkerEngine
 
 __all__ = [
     'TTSProvider',
@@ -200,4 +201,5 @@ __all__ = [
     'SnSpellEngine',
     'S14001aCalculatorEngine',
     'DoubleTalkEngine',
+    'SmoothTalkerEngine',
 ]
