@@ -61,8 +61,19 @@ RUN git clone --depth 1 https://github.com/dectalk/lintalker.git /tmp/lintalker 
 # themselves are NOT baked in here - mounted at runtime from
 # roms/amiganarrator/ (see that dir's PROVENANCE.md) - see
 # providers/amiganarrator.py.
-RUN git clone --depth 1 --recurse-submodules https://github.com/nicodex/AmigaNarrator.git /tmp/amiganarrator && \
-    cd /tmp/amiganarrator && \
+#
+# narrator.c/translator.c are overlaid with native/amiganarrator/'s copies
+# instead of using upstream's as-cloned: upstream unconditionally runs
+# every emulated 68k instruction through m68k_disassemble()+fprintf() (a
+# always-on debug trace with no way to turn it off, even with stderr
+# redirected to /dev/null - the formatting work still happens) which was
+# ~1.8s/request of the ~1.9s narrator took to run. The vendored copies add
+# an opt-in `-v` flag (default off) gating that trace, cutting narrator to
+# ~0.15s/request and translator to ~4ms - same output, verified byte-
+# identical. See ~/src/speech/AmigaNarrator/PLAN.md's perf section.
+RUN git clone --depth 1 --recurse-submodules https://github.com/nicodex/AmigaNarrator.git /tmp/amiganarrator
+COPY native/amiganarrator/narrator.c native/amiganarrator/translator.c /tmp/amiganarrator/
+RUN cd /tmp/amiganarrator && \
     make && \
     mkdir -p /opt/amiganarrator && \
     cp bin/narrator bin/translator /opt/amiganarrator/ && \
