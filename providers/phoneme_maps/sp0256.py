@@ -60,6 +60,9 @@ _PUNCT_TO_ALLOPHONE = {
 }
 
 
+_PAUSE_CODES = {ALLOPHONE_ADDRESS[name] for name in ("PA1", "PA2", "PA3", "PA4", "PA5")}
+
+
 def _phone_for_token(token: str) -> List[int]:
     if token in _PUNCT_TO_ALLOPHONE:
         return [ALLOPHONE_ADDRESS[_PUNCT_TO_ALLOPHONE[token]]]
@@ -70,18 +73,38 @@ def _phone_for_token(token: str) -> List[int]:
     return [ALLOPHONE_ADDRESS[_ARPABET_TO_ALLOPHONE[letters]]]
 
 
-def arpabet_to_allophones(tokens: List[str], word_pause: str = "PA3") -> List[int]:
+def arpabet_to_allophones(tokens: List[str], phone_gap: str = "PA2", word_pause: str = "PA3") -> List[int]:
     """Convert a list of ARPAbet tokens (as produced by g2p_en's G2p(), e.g.
     ['HH', 'AH0', 'L', 'OW1', ' ', 'W', 'ER1', 'L', 'D']) into a list of
     SP0256-AL2 allophone addresses. Space tokens become `word_pause`;
-    punctuation tokens map to their own pause lengths; anything else
-    unrecognized is skipped."""
+    punctuation tokens map to their own pause lengths.
+
+    Consecutive phones within a word also get a short `phone_gap` inserted
+    between them (unless one side is already a pause). The SP0256's
+    allophone ROM entries carry over filter/formant state from whatever
+    played immediately before them (real chip behavior, for coarticulation)
+    - fed back-to-back with zero gap, this was found to let short/quiet
+    consonants (e.g. LL) get swallowed into the surrounding vowels'
+    transitions almost entirely (verified by ear: isolated LL sounds fine,
+    but HH1-UH-LL-OW concatenated with no gap renders with no audible L at
+    all). A short gap breaks that continuity enough for the consonant to
+    register. Note there's no way to lengthen a specific allophone itself
+    to compensate for a still-brief/clipped consonant - each ROM entry's
+    duration is a fixed value baked into its own microcode program, and
+    resending the same address just re-triggers it from the start (two
+    short re-articulations, not one longer one) - so this mapping has a
+    real, unavoidable clarity ceiling on weak consonants that period
+    SP0256 products worked around with hand-tuned per-word data instead of
+    a generic rule-based G2P mapping like this one."""
     codes: List[int] = []
     for token in tokens:
         if token == " ":
             codes.append(ALLOPHONE_ADDRESS[word_pause])
             continue
-        codes.extend(_phone_for_token(token))
+        for code in _phone_for_token(token):
+            if codes and codes[-1] not in _PAUSE_CODES and code not in _PAUSE_CODES:
+                codes.append(ALLOPHONE_ADDRESS[phone_gap])
+            codes.append(code)
     return codes
 
 
