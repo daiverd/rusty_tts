@@ -44,7 +44,11 @@ class VotraxTypeNTalkEngine(BaseTTSEngine):
         try:
             sanitized = mame_audio.sanitize_text(text)
             wait_after = min(45.0, 3.0 + 0.3 * len(sanitized))
-            seconds_to_run = int(5 + wait_after)
+            # The TNT's own fixed "System ready" power-on announcement
+            # takes ~1.5s to finish (measured empirically) - boot_wait just
+            # needs to clear that before posting text.
+            boot_wait = 2.0
+            seconds_to_run = int(boot_wait + wait_after)
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 wav_path = Path(tmpdir) / "capture.wav"
@@ -52,7 +56,7 @@ class VotraxTypeNTalkEngine(BaseTTSEngine):
                 env = os.environ.copy()
                 env["MAME_RS232_INPUT"] = sanitized + "\r"
                 env["MAME_RS232_WAIT_AFTER"] = str(wait_after)
-                env["MAME_RS232_BOOT_WAIT"] = "1.0"
+                env["MAME_RS232_BOOT_WAIT"] = str(boot_wait)
 
                 cmd = [
                     str(mame_audio.MAME_BIN), "votrtnt",
@@ -64,14 +68,15 @@ class VotraxTypeNTalkEngine(BaseTTSEngine):
                     "-skip_gameinfo",
                     "-autoboot_script", str(_LUA_SCRIPT),
                 ]
-                subprocess.run(
+                proc = subprocess.run(
                     cmd, env=env, capture_output=True,
                     timeout=seconds_to_run + 30, cwd=tmpdir,
                 )
                 if not wav_path.exists():
                     return False
 
-                extracted = mame_audio.extract_speech_channel(wav_path)
+                min_start_seconds = mame_audio.parse_speech_marker(proc.stdout)
+                extracted = mame_audio.extract_speech_channel(wav_path, min_start_seconds)
                 if extracted is None:
                     return False
                 chan, sr = extracted

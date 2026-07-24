@@ -28,7 +28,12 @@ class VotraxPersonalSpeechSystemEngine(BaseTTSEngine):
     the synthesis core.
 
     No disk/OS to boot - text is typed directly into the machine's own
-    built-in terminal keyboard and spoken almost immediately.
+    built-in terminal keyboard. The real hardware's "Default Input Port"
+    DIP switch defaults to expecting Serial/RS-232 input instead, which
+    would silently ignore keyboard-path text by design (see votrpss.cpp),
+    so native/mame-votrax/capture.lua forces that DIP to Parallel at boot.
+    Speech only starts after the unit's own ~7.5s "System ready" power-on
+    announcement finishes, which is cropped out of the recording.
 
     Requires the PSS firmware ROMs and the SC-01A chip ROM (see
     scripts/fetch_roms.sh) mounted at /mame_roms/votrpss/, plus the
@@ -46,7 +51,13 @@ class VotraxPersonalSpeechSystemEngine(BaseTTSEngine):
         try:
             sanitized = mame_audio.sanitize_text(text)
             wait_after = min(45.0, 3.0 + 0.3 * len(sanitized))
-            seconds_to_run = int(5 + wait_after)
+            # The PSS's own fixed "System ready, Version 3.C" power-on
+            # announcement takes ~7.5s to finish (measured empirically) -
+            # boot_wait has to clear that before posting text, or the
+            # characters arrive while it's still mid-announcement and get
+            # dropped instead of queued.
+            boot_wait = 9.0
+            seconds_to_run = int(boot_wait + wait_after)
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 wav_path = Path(tmpdir) / "capture.wav"
@@ -54,7 +65,8 @@ class VotraxPersonalSpeechSystemEngine(BaseTTSEngine):
                 env = os.environ.copy()
                 env["MAME_RS232_INPUT"] = sanitized + "\r"
                 env["MAME_RS232_WAIT_AFTER"] = str(wait_after)
-                env["MAME_RS232_BOOT_WAIT"] = "1.0"
+                env["MAME_RS232_BOOT_WAIT"] = str(boot_wait)
+                env["MAME_VOTRAX_DSW1_PARALLEL"] = "1"
 
                 cmd = [
                     str(mame_audio.MAME_BIN), "votrpss",
@@ -65,14 +77,15 @@ class VotraxPersonalSpeechSystemEngine(BaseTTSEngine):
                     "-skip_gameinfo",
                     "-autoboot_script", str(_LUA_SCRIPT),
                 ]
-                subprocess.run(
+                proc = subprocess.run(
                     cmd, env=env, capture_output=True,
                     timeout=seconds_to_run + 30, cwd=tmpdir,
                 )
                 if not wav_path.exists():
                     return False
 
-                extracted = mame_audio.extract_speech_channel(wav_path)
+                min_start_seconds = mame_audio.parse_speech_marker(proc.stdout)
+                extracted = mame_audio.extract_speech_channel(wav_path, min_start_seconds)
                 if extracted is None:
                     return False
                 chan, sr = extracted

@@ -85,17 +85,45 @@ def _phone_for_token(token: str) -> List[int]:
     return []
 
 
-def arpabet_to_phones(tokens: List[str], word_pause: str = "PA1") -> List[int]:
+# g2p_en emits a bare " " token between every word regardless of any actual
+# punctuation - treating each of those as a pause (as an earlier version of
+# this function did) put a full pause phone between literally every word,
+# which reads as unnaturally gappy/robotic since Votrax's own phone-to-phone
+# coarticulation already provides word separation. Real pauses belong at
+# punctuation instead: comma-level marks get the shorter of the two ROM
+# pause phones, sentence-enders get the longer one (measured from the
+# actual sc01a.bin ROM's duration fields - PA1 is ~74ms, PA0 is ~244ms at
+# the default 720kHz clock, despite what the naming might suggest).
+_COMMA_PUNCTUATION = {",", ";", ":", "-", "--"}
+_SENTENCE_PUNCTUATION = {".", "!", "?"}
+
+
+def arpabet_to_phones(tokens: List[str], comma_pause: str = "PA1", sentence_pause: str = "PA0") -> List[int]:
     """Convert a list of ARPAbet tokens (as produced by g2p_en's G2p(), e.g.
     ['HH', 'AH0', 'L', 'OW1', ' ', 'W', 'ER1', 'L', 'D']) into a list of
-    Votrax SC-01A phone addresses. Space tokens become `word_pause`;
-    punctuation and other non-phoneme tokens are skipped."""
+    Votrax SC-01A phone addresses. Plain word-boundary spaces are dropped
+    (words flow together); punctuation tokens contribute a pause phone
+    instead - comma-level marks a short one, sentence-enders a long one -
+    with consecutive punctuation/space tokens collapsing into a single
+    pause rather than stacking."""
     codes: List[int] = []
+    pending_pause = None
     for token in tokens:
         if token == " ":
-            codes.append(PHONE_ADDRESS[word_pause])
             continue
+        if token in _SENTENCE_PUNCTUATION:
+            pending_pause = sentence_pause
+            continue
+        if token in _COMMA_PUNCTUATION:
+            if pending_pause is None:
+                pending_pause = comma_pause
+            continue
+        if pending_pause is not None:
+            codes.append(PHONE_ADDRESS[pending_pause])
+            pending_pause = None
         codes.extend(_phone_for_token(token))
+    if pending_pause is not None:
+        codes.append(PHONE_ADDRESS[pending_pause])
     return codes
 
 

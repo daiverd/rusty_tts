@@ -28,12 +28,25 @@ def sanitize_text(text: str) -> str:
 def trim_silence(chan: array.array, sr: int, pad_s: float = 0.2) -> Optional[Tuple[int, int]]:
     win = max(1, sr // 20)
     n = len(chan)
+    window_maxes = [max(abs(x) for x in chan[i:i + win]) for i in range(0, n - win, win)]
+    if not window_maxes:
+        return None
+
+    # Some machines (e.g. the Votrax PSS - see votrax_pss.py) output a
+    # constant nonzero idle bias on their speech channel instead of true
+    # near-zero silence, well above the fixed _SILENCE_THRESHOLD that's
+    # calibrated for machines that do go quiet. Estimate that per-clip idle
+    # floor (10th percentile of window peaks - most of a clip's windows are
+    # idle, not mid-speech) and raise the threshold above it when needed, so
+    # idle hum isn't mistaken for the start/end of real speech.
+    noise_floor = sorted(window_maxes)[len(window_maxes) // 10]
+    threshold = max(_SILENCE_THRESHOLD, int(noise_floor * 1.5))
+
     first = None
     last = None
-    for i in range(0, n - win, win):
-        seg = chan[i:i + win]
-        m = max(abs(x) for x in seg)
-        if m > _SILENCE_THRESHOLD:
+    for idx, m in enumerate(window_maxes):
+        if m > threshold:
+            i = idx * win
             if first is None:
                 first = i
             last = i + win
